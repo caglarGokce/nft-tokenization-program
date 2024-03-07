@@ -18,7 +18,14 @@ pub struct NFTTerms{
     pub lamports_per_token:u64, //bir hisse kaca satiliyor = price_bought/tokenization_share
     pub tokens_sold:u64, // kac token satildi if share_sold == tokenization_share transfer tokens to pda
     pub bump:u8,
-}
+    pub vote_open:u8
+}//147
+
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
+pub struct UserAddresTokenMint{
+    pub user:[u8;32],
+    pub mint:[u8;32],
+}//64
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct FundRaising{
@@ -29,10 +36,11 @@ pub struct FundRaising{
     pub number_of_tokens:u64, //nft kac tokena bolundu
     pub lamports_per_token:u64, //bir hisse kaca satiliyor = price_bought/tokenization_share
     pub bump:u8
-}
+}//90
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct DistData{
+    pub token_mint:[u8;32],
     pub distribution_open:u8,
     pub tokens_left:u64,
     pub bump:u8
@@ -44,7 +52,7 @@ pub struct FunderAccount{
     pub nft_mint:[u8;32],
     pub tokens_mint:[u8;32],
     pub fund_invested:u64,
-}
+}//104
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct NFTAccount{
@@ -69,9 +77,9 @@ pub struct VoteAccount{
     pub tokenized_nft_mint:[u8;32],
     pub new_buy_out_price_accept_votes:u64,
     pub new_buy_out_price_refuse_votes:u64,
-    pub voting_ends:u64, 
-    pub new_buy_out_offer:u64, 
-    pub voting_no:u8, 
+    pub voting_ends:u64,
+    pub new_buy_out_offer:u64,
+    pub voting_no:u8,
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
@@ -92,7 +100,7 @@ pub struct Lamports{
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
-pub struct InitVote{
+pub struct InitVoting{
     pub offer:u64,
     pub proposer_pda:u8,
     pub vote_account_pda:u8,
@@ -129,4 +137,7 @@ pub struct Terms{
     pub tokenization_account_size:u64,
     pub token_distribution_account:u64,
     pub token_distribution_account_size:u64,
+
 }
+
+

@@ -1,5 +1,5 @@
 use crate::error::MailError::InvalidInstruction;
-use crate::state::{ InitPDA, InitVote, InvestorAccount, Lamports, NFTAccount, NFTTerms, Proposal, VoteData};
+use crate::state::{ InitPDA, InitVoting, InvestorAccount, Lamports, NFTAccount, NFTTerms, Proposal, VoteData};
 use borsh::BorshDeserialize;
 use solana_program::program_error::ProgramError;
 
@@ -22,11 +22,11 @@ pub enum NFTInstruction {
   StopTokenizedNFTSale,
   BuyOutNFT,
   TokenizeNFT{data:NFTAccount,data2:NFTTerms},
-  InitVoting{data:InitVote},
-  RepeatVoting{data:InitVote},
+  InitVoting{data:InitVoting},
+  RepeatVoting{data:InitVoting},
   SetVoteResult,
   Vote{data:VoteData},
-  InitVoteAccount{data:InitVote},
+  InitVoteAccount{data:InitVoting},
   LiquidateProg,
   LiquidateIndv,
   MakeOffer{data:Proposal},
@@ -94,17 +94,17 @@ impl NFTInstruction {
       data: Proposal::try_from_slice(&rest)?,
      },
      16 => Self::InitVoting{
-      data: InitVote::try_from_slice(&rest)?,
+      data: InitVoting::try_from_slice(&rest)?,
      },
      17 => Self::LiquidateProg,
      18 => Self::LiquidateIndv,
      19 => Self::InitVoteAccount{
-      data: InitVote::try_from_slice(&rest)?,
+      data: InitVoting::try_from_slice(&rest)?,
      },
      20 => Self::SetVoteResult,
 
      21 => Self::RepeatVoting{
-      data: InitVote::try_from_slice(&rest)?,
+      data: InitVoting::try_from_slice(&rest)?,
      },
      22 => Self::Vote{
       data: VoteData::try_from_slice(&rest)?,
