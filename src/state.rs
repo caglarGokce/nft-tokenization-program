@@ -44,7 +44,7 @@ pub struct DistData{
     pub distribution_open:u8,
     pub tokens_left:u64,
     pub bump:u8
-}
+}//42
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct FunderAccount{
@@ -55,12 +55,10 @@ pub struct FunderAccount{
 }//104
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
-pub struct NFTAccount{
-    pub size:u64,
-    pub lamports:u64,
+pub struct InitAccount{
     pub bump:u8,
-    pub mint_lamports:u64,
-    pub mint_size:u64,
+    pub lamports:u64,
+    pub size:u64,
 }
 
 

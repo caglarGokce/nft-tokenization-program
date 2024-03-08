@@ -1,5 +1,5 @@
 use crate::instruction::NFTInstruction;
-use crate::state::{DistData, FundRaising, FunderAccount, InitPDA, InitVoting, InvestorAccount, Lamports, NFTAccount, NFTTerms, NFTToken, Proposal, Terms, UserAddresTokenMint, VoteAccount, VoteData};
+use crate::state::{DistData, FundRaising, FunderAccount, InitPDA, InitVoting, InvestorAccount, Lamports, InitAccount, NFTTerms, NFTToken, Proposal, Terms, UserAddresTokenMint, VoteAccount, VoteData};
 use borsh::{BorshDeserialize, BorshSerialize};
 
 
@@ -141,13 +141,12 @@ impl Processor {
   fn start_fund_raising_to_buy_nft(
     accounts: &[AccountInfo],
     program_id: &Pubkey,
-    create_account: NFTAccount,
+    create_account: InitAccount,
   ) -> ProgramResult {
 
     let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
     let initializer: &AccountInfo<'_> = next_account_info(accounts_iter)?; //fon toplama girisimini baslatan hesap writable signer
-    let intializer_funds_account: &AccountInfo<'_> = next_account_info(accounts_iter)?; //girisimi baslatan hesabin yatirim hesabi
     let fundrasing_account: &AccountInfo<'_> = next_account_info(accounts_iter)?; //fon toplama girisim hesabi. her NFT icin bir tane bulunur.
     let token_dist_data: &AccountInfo<'_> = next_account_info(accounts_iter)?; //Fon toplama girisimi basarili olursa yatirimci tokenlarini almak icin bu hesabi kullanir
     let pda: &AccountInfo<'_> = next_account_info(accounts_iter)?; //NFT ile ilgili butun bilgilerin tutuldugu hesaptir
@@ -158,7 +157,6 @@ impl Processor {
 
     if terms_account.owner != program_id{panic!()}
     if fundrasing_account.owner != program_id{panic!()}
-    if intializer_funds_account.owner != program_id{panic!()}
     if pda.owner != program_id{panic!()}
 
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
@@ -167,7 +165,6 @@ impl Processor {
 
     if !initializer.is_signer{panic!()}
 
-    let mut funder_account: FunderAccount = FunderAccount::try_from_slice(&intializer_funds_account.data.borrow())?;
     let mut fundraising: FundRaising = FundRaising::try_from_slice(&fundrasing_account.data.borrow())?;
     let pda_data: NFTTerms = NFTTerms::try_from_slice(&pda.data.borrow())?;
 
@@ -175,18 +172,10 @@ impl Processor {
     if pda_data.tokenized_for_sale != 0 {panic!()} //if the nft is tokenized cant start a fundrasing. go buy tokens
     if pda_data.owned_by_pda != 0 {panic!()} //if nft already owned by a community cant start a funsraise
 
-    let funder_address_from_bytes: Pubkey = Pubkey::new_from_array(funder_account.funder);
-    if &funder_address_from_bytes != initializer.key {panic!()}
 
-    let nft_mint_from_bytes: Pubkey = Pubkey::new_from_array(funder_account.nft_mint);
     let nft_mint_from_bytes2: Pubkey = Pubkey::new_from_array(pda_data.nft_mint);
     let nft_mint_from_bytes3: Pubkey = Pubkey::new_from_array(fundraising.nft_mint);
-    if nft_mint_from_bytes != nft_mint_from_bytes2 {panic!()}
-    if nft_mint_from_bytes != nft_mint_from_bytes3 {panic!()}
-
-    let tokenization_mint_from_bytes: Pubkey = Pubkey::new_from_array(funder_account.tokens_mint);
-    let tokenization_mint_from_bytes2: Pubkey = Pubkey::new_from_array(fundraising.tokens_mint);
-    if tokenization_mint_from_bytes != tokenization_mint_from_bytes2{panic!()}
+    if nft_mint_from_bytes3 != nft_mint_from_bytes2 {panic!()}
 
     //creating mint account
     let ix = &system_instruction::create_account(  
@@ -223,7 +212,7 @@ impl Processor {
     invoke(ix,  &[initializer.clone(),tokenization_mint.clone(),token_program.clone(),])?;
     invoke(&ix_2,  &[token_dist_data.clone(),tokenization_mint.clone(),token_program.clone(),sysvar.clone()])?;
 
-    let number_of_tokens: u64 = create_account.mint_lamports/1000000; //each 1 million lamports is 1 token. 
+    let number_of_tokens: u64 = create_account.lamports/1000000; //each 1 million lamports is 1 token. 
 
     let fund_raise: u64 = number_of_tokens*1000000; // Investors can invest 1 million lamports and multipliers of it
 
@@ -243,7 +232,6 @@ impl Processor {
   **initializer.lamports.borrow_mut()-= fund_raise;
   **fundrasing_account.lamports.borrow_mut()+= fund_raise;
 
-  funder_account.fund_invested = fund_raise;
 
   let distribution: DistData = DistData{
     token_mint:tokenization_mint.key.to_bytes(),
@@ -254,7 +242,6 @@ impl Processor {
 
   distribution.serialize(&mut &mut token_dist_data.data.borrow_mut()[..])?;
   fundraising.serialize(&mut &mut fundrasing_account.data.borrow_mut()[..])?;
-  funder_account.serialize(&mut &mut intializer_funds_account.data.borrow_mut()[..])?;
 
 
     Ok(())
@@ -545,9 +532,9 @@ impl Processor {
   ) -> ProgramResult {
 
     //yatirimci fon girisimine yatirim yapmak icin hesap olusturur. 
-    //her nft icin birden fazla satin alma girisimi olabilir ancak
+    //farkli zamanlarda olmak uzere her nft icin birden fazla satin alma girisimi olabilir ancak
     //her satin alma girisiminin tokenizasyon minti kendine ozgudur. boylece
-    //her girrisim birbirinden ayri tutulmus ve yatirimlar birbirine karismamis olur
+    //her girisim birbirinden ayri tutulmus ve yatirimlar birbirine karismamis olur
 
     let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
@@ -587,7 +574,7 @@ impl Processor {
       ],
     )?;
 
-    let funds = FunderAccount{
+    let funds: FunderAccount = FunderAccount{
       funder:funder.key.to_bytes(),
       nft_mint:fundraising.nft_mint,
       tokens_mint:tokenization_mint.key.to_bytes(),
@@ -673,7 +660,7 @@ impl Processor {
   fn list_nft_forsale_as_whole_in_this_program(
     accounts: &[AccountInfo],
     program_id: &Pubkey,
-    create_account: NFTAccount,
+    create_account: InitAccount,
     data: NFTTerms,
     ) -> ProgramResult {
 
@@ -714,8 +701,8 @@ impl Processor {
     let ix: &solana_program::instruction::Instruction = &system_instruction::create_account(  
       &seller.key, 
       &tokenized_nft_token_mint.key,
-      create_account.mint_lamports,
-      create_account.mint_size,
+      create_account.lamports,
+      create_account.size,
       &token_program.key
     );
 
@@ -1043,7 +1030,7 @@ impl Processor {
   fn tokenize_nft_and_sell_in_this_program(
   accounts: &[AccountInfo],
   program_id: &Pubkey,
-  create_account:NFTAccount,
+  create_account:InitAccount,
   data:NFTTerms
 ) -> ProgramResult {
 
@@ -1080,8 +1067,8 @@ impl Processor {
   let ix = &system_instruction::create_account(  
     &seller.key, 
     &tokenized_nft_token_mint.key,
-    create_account.mint_lamports,
-    create_account.mint_size,
+    create_account.lamports,
+    create_account.size,
     &token_program.key
   );
 
@@ -1487,7 +1474,7 @@ impl Processor {
 
 fn tokenize_your_nft(
   accounts: &[AccountInfo],
-  create_account:NFTAccount,
+  create_account:InitAccount,
   data:NFTTerms
 ) -> ProgramResult {
 
@@ -1524,8 +1511,8 @@ fn tokenize_your_nft(
   let ix = &system_instruction::create_account(  
     &owner.key, 
     &tokenized_nft_token_mint.key,
-    create_account.mint_lamports,
-    create_account.mint_size,
+    create_account.lamports,
+    create_account.size,
     &token_program.key
   );
 
@@ -1899,7 +1886,6 @@ fn tokenize_your_nft(
       let voter_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let voter_pda: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
-  
       if !voter.is_signer{panic!()}
   
       if voter_ata.owner!=&spl_token::id(){panic!()}
