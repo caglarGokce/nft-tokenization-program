@@ -61,7 +61,6 @@ pub struct InitAccount{
     pub size:u64,
 }
 
-
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct NFTToken{
     pub tokenized_nft_mint:[u8;32],
@@ -85,7 +84,7 @@ pub struct InitPDA{
     pub init_pda:u8, 
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct Proposal{
     pub proposer:[u8;32],
     pub nft_mint:[u8;32],
@@ -98,7 +97,7 @@ pub struct Lamports{
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
-pub struct InitVoting{
+pub struct StartVoting{
     pub offer:u64,
     pub proposer_pda:u8,
     pub vote_account_pda:u8,
@@ -110,14 +109,14 @@ pub struct VoteData{
     pub vote_account_pda_bump:u8,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+#[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct InvestorAccount{
     pub investor:[u8;32],
     pub lamports:u64,
 }
 
 
-#[derive(BorshSerialize, BorshDeserialize, Debug)]
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct Terms{
    
     pub is_init:u8,

@@ -1,11 +1,11 @@
 use crate::error::MailError::InvalidInstruction;
-use crate::state::{ InitPDA, InitVoting, InvestorAccount, Lamports, NFTAccount, NFTTerms, Proposal, VoteData};
+use crate::state::{ InitPDA, StartVoting,  Lamports, InitAccount, NFTTerms,  VoteData, Terms};
 use borsh::BorshDeserialize;
 use solana_program::program_error::ProgramError;
 
 #[derive(Debug, PartialEq)]
 pub enum NFTInstruction {
-  StartFundRaising{data:NFTAccount},
+  StartFundRaising{data:InitAccount},
   JoinFundRaising{data:Lamports},
   RemoveFunds{data:Lamports},
   GetTokenizedAsset,
@@ -13,29 +13,32 @@ pub enum NFTInstruction {
   SellNFTtoFund,
   CreateFunder,
   CreateFundRaisingAcc{data:InitPDA},
-  SellWholeNFT{data:NFTAccount,data2:NFTTerms},
+  SellWholeNFT{data:NFTTerms},
   CancelWholeNFTSale,
   BuyWholeNFTProgram,
   TokenSol,
-  TokenizeNFTSell{data:NFTAccount,data2:NFTTerms},
+  TokenizeNFTSell{data:InitAccount,data2:NFTTerms},
   BuyTokenizedNFT{data:Lamports},
   StopTokenizedNFTSale,
   BuyOutNFT,
-  TokenizeNFT{data:NFTAccount,data2:NFTTerms},
-  InitVoting{data:InitVoting},
-  RepeatVoting{data:InitVoting},
+  TokenizeNFT{data:InitAccount,data2:NFTTerms},
+  InitVoting{data:StartVoting},
+  RepeatVoting{data:StartVoting},
   SetVoteResult,
   Vote{data:VoteData},
-  InitVoteAccount{data:InitVoting},
+  InitVoteAccount{data:StartVoting},
   LiquidateProg,
   LiquidateIndv,
-  MakeOffer{data:Proposal},
-  CreateInvestorAccount{data:InvestorAccount},
-  FundInvestorAccount{data:InvestorAccount},
-  CreateMeta{data:InitPDA},
+  MakeOffer{data:Lamports},
+  CreateInvestorAccount{data:Lamports},
+  FundInvestorAccount{data:Lamports},
+  CreateMeta,
   Register{data:InitPDA},
+  UpdateTerms{data:Terms},
+  BuyNFTFundsProgrm,
 
 }
+
 
 impl NFTInstruction {
   pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
@@ -43,7 +46,7 @@ impl NFTInstruction {
     
     Ok(match tag {
      0 => Self::StartFundRaising {
-      data: NFTAccount::try_from_slice(&rest)?,
+      data: InitAccount::try_from_slice(&rest)?,
      },
      1 => Self::JoinFundRaising{
       data: Lamports::try_from_slice(&rest)?,
@@ -54,16 +57,9 @@ impl NFTInstruction {
      3 => Self::GetTokenizedAsset,
      4 => Self::BuyNFTFunds,
      5 => Self::SellNFTtoFund,
-
-     6 => {
-      let (data_bytes, rest2) = rest.split_at(33);
-      let data: NFTAccount = NFTAccount::try_from_slice(data_bytes)?;
-
-      // Extract data bytes (assuming the rest)
-      let data2: NFTTerms = NFTTerms::try_from_slice(rest2)?;
-
-      Self::SellWholeNFT { data, data2 }
-    },
+     6 => Self::SellWholeNFT{
+      data: NFTTerms::try_from_slice(&rest)?,
+     },
      7 => Self::CancelWholeNFTSale,
      8 => Self::TokenSol,
      9 => Self::BuyTokenizedNFT{
@@ -71,7 +67,7 @@ impl NFTInstruction {
      },
      10 => {
       let (data_bytes, rest2) = rest.split_at(33);
-      let data: NFTAccount = NFTAccount::try_from_slice(data_bytes)?;
+      let data: InitAccount = InitAccount::try_from_slice(data_bytes)?;
 
       // Extract data bytes (assuming the rest)
       let data2: NFTTerms = NFTTerms::try_from_slice(rest2)?;
@@ -80,7 +76,7 @@ impl NFTInstruction {
     },
     11 => {
       let (data_bytes, rest2) = rest.split_at(33);
-      let data: NFTAccount = NFTAccount::try_from_slice(data_bytes)?;
+      let data: InitAccount = InitAccount::try_from_slice(data_bytes)?;
 
       // Extract data bytes (assuming the rest)
       let data2: NFTTerms = NFTTerms::try_from_slice(rest2)?;
@@ -91,30 +87,30 @@ impl NFTInstruction {
      13 => Self::StopTokenizedNFTSale,
      14 => Self::BuyOutNFT,
      15 => Self::MakeOffer{
-      data: Proposal::try_from_slice(&rest)?,
+      data: Lamports::try_from_slice(&rest)?,
      },
      16 => Self::InitVoting{
-      data: InitVoting::try_from_slice(&rest)?,
+      data: StartVoting::try_from_slice(&rest)?,
      },
      17 => Self::LiquidateProg,
      18 => Self::LiquidateIndv,
      19 => Self::InitVoteAccount{
-      data: InitVoting::try_from_slice(&rest)?,
+      data: StartVoting::try_from_slice(&rest)?,
      },
      20 => Self::SetVoteResult,
 
      21 => Self::RepeatVoting{
-      data: InitVoting::try_from_slice(&rest)?,
+      data: StartVoting::try_from_slice(&rest)?,
      },
      22 => Self::Vote{
       data: VoteData::try_from_slice(&rest)?,
      },
      23 => Self::CreateInvestorAccount{
-      data: InvestorAccount::try_from_slice(&rest)?,
+      data: Lamports::try_from_slice(&rest)?,
      },
      24 => Self::CreateFunder,
      25 => Self::FundInvestorAccount{
-      data: InvestorAccount::try_from_slice(&rest)?,
+      data: Lamports::try_from_slice(&rest)?,
      },
      26 => Self::CreateFundRaisingAcc{
       data: InitPDA::try_from_slice(&rest)?,
@@ -122,9 +118,12 @@ impl NFTInstruction {
      27 => Self::Register {
       data: InitPDA::try_from_slice(&rest)?,
      },
-     28 => Self::CreateMeta{
-      data: InitPDA::try_from_slice(&rest)?,
+     28 => Self::CreateMeta,
+     29 => Self::UpdateTerms{
+      data: Terms::try_from_slice(&rest)?
      },
+     30 => Self::BuyNFTFundsProgrm,
+
       _ => return Err(InvalidInstruction.into()),
     })
   }
