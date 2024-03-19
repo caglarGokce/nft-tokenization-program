@@ -13,7 +13,7 @@ pub struct NFTTerms{
     pub owned_by_pda:u8,
     pub price:u64, //kaca satiliyor
     pub buy_out_price:u64, //kaca satilacak / hemen satin al rakami.
-    pub list_in_main_page:String, // belli bir fee odeyenleri ana sayfada gosterebiliriz
+    pub lamports_per_token_buyout:u64, // belli bir fee odeyenleri ana sayfada gosterebiliriz
     pub number_of_tokens:u64, //nft kac tokena bolundu
     pub lamports_per_token:u64, //bir hisse kaca satiliyor = price_bought/tokenization_share
     pub tokens_sold:u64, // kac token satildi if share_sold == tokenization_share transfer tokens to pda
@@ -52,6 +52,7 @@ pub struct FunderAccount{
     pub nft_mint:[u8;32],
     pub tokens_mint:[u8;32],
     pub fund_invested:u64,
+    pub lamports_per_token:u64,
 }//104
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
@@ -62,7 +63,7 @@ pub struct InitAccount{
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
-pub struct NFTToken{
+pub struct TokenToSol{
     pub tokenized_nft_mint:[u8;32],
     pub number_of_tokens:u64, 
     pub lamports_per_token:u64,
@@ -134,6 +135,12 @@ pub struct Terms{
     pub tokenization_account_size:u64,
     pub token_distribution_account:u64,
     pub token_distribution_account_size:u64,
+    pub usertokenmint_account:u64,
+    pub usertokenmint_account_size:u64,//64
+    pub token_to_sol_account:u64,
+    pub token_to_sol_account_size:u64,//50
+    pub lamports_per_token_fundraising:u64,
+    pub minimum_lamports_per_token:u64,
 
 }
 
