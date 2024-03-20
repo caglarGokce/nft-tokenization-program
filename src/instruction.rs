@@ -17,7 +17,7 @@ pub enum NFTInstruction {
   CancelWholeNFTSale,
   BuyWholeNFTProgram,
   TokenSol,
-  TokenizeNFTSell{data:InitAccount,data2:NFTTerms},
+  TokenizeNFTSell{data:NFTTerms},
   BuyTokenizedNFT{data:Lamports},
   StopTokenizedNFTSale,
   BuyOutNFT,
@@ -65,20 +65,13 @@ impl NFTInstruction {
      9 => Self::BuyTokenizedNFT{
       data: Lamports::try_from_slice(&rest)?,
      },
-     10 => {
-      let (data_bytes, rest2) = rest.split_at(33);
-      let data: InitAccount = InitAccount::try_from_slice(data_bytes)?;
-
-      // Extract data bytes (assuming the rest)
-      let data2: NFTTerms = NFTTerms::try_from_slice(rest2)?;
-
-      Self::TokenizeNFTSell { data, data2 }
+     10 => Self::TokenizeNFTSell {
+      data: NFTTerms::try_from_slice(&rest)?,
     },
     11 => {
-      let (data_bytes, rest2) = rest.split_at(33);
+      let (data_bytes, rest2) = rest.split_at(17);
       let data: InitAccount = InitAccount::try_from_slice(data_bytes)?;
 
-      // Extract data bytes (assuming the rest)
       let data2: NFTTerms = NFTTerms::try_from_slice(rest2)?;
 
       Self::TokenizeNFT { data, data2 }

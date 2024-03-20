@@ -133,8 +133,8 @@ pub struct Terms{
     pub proposal_account_size:u64,
     pub tokenization_account:u64,
     pub tokenization_account_size:u64,
-    pub token_distribution_account:u64,
-    pub token_distribution_account_size:u64,
+    pub mint_account:u64,
+    pub mint_account_size:u64,
     pub usertokenmint_account:u64,
     pub usertokenmint_account_size:u64,//64
     pub token_to_sol_account:u64,

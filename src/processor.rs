@@ -74,8 +74,8 @@ impl Processor {
       NFTInstruction::TokenSol {} => {
         Self::change_tokens_to_sol(accounts,program_id)
       }
-      NFTInstruction::TokenizeNFTSell {data,data2} => {
-        Self::tokenize_nft_and_sell_in_this_program(accounts,program_id,data,data2)
+      NFTInstruction::TokenizeNFTSell {data} => {
+        Self::tokenize_nft_and_sell_in_this_program(accounts,program_id,data)
       }
       NFTInstruction::BuyTokenizedNFT {data} => {
         Self::buy_part_of_tokenized_nft_from_this_program(accounts,program_id,data)
@@ -186,8 +186,8 @@ impl Processor {
         &system_instruction::create_account(
           &initializer.key, 
           &token_dist_data.key,
-          terms.token_distribution_account,
-          terms.token_distribution_account_size,
+          terms.mint_account,
+          terms.mint_account_size,
           program_id),
         &[
           initializer.clone(),
@@ -1165,7 +1165,6 @@ impl Processor {
   fn tokenize_nft_and_sell_in_this_program(
   accounts: &[AccountInfo],
   program_id: &Pubkey,
-  create_account:InitAccount,
   data:NFTTerms
 ) -> ProgramResult {
 
@@ -1184,45 +1183,41 @@ impl Processor {
   let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
+  msg!("8");
   if terms_account.owner != program_id{panic!()}
   if terms_account.is_writable{panic!()}
   let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
   if terms.is_init != 1 {panic!()}
+  msg!("7");
 
   if pda.owner != program_id {panic!()}
   if seller_ata.owner!=&spl_token::id() && seller_ata.owner!=&spl_token_2022::id(){panic!()}
   if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
+  msg!("6");
+  
 
-  if seller_tokenization_ata.owner!=&spl_token::id() && seller_tokenization_ata.owner!=&spl_token_2022::id(){
-    let create_seller_tokenization_ata: solana_program::instruction::Instruction = create_associated_token_account(
-      seller.key,
-      seller.key, 
-      tokenization_mint.key, 
-      token_program_2022.key);
-
-    invoke(&create_seller_tokenization_ata,
-        &[seller.clone(),seller_tokenization_ata.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
-  }
-
-    let seller_ata_unpacked :Account = Account::unpack_from_slice(&seller_ata.data.borrow())?;
+  let seller_ata_unpacked :Account = Account::unpack_from_slice(&seller_ata.data.borrow())?;
   if nft_mint.key != &seller_ata_unpacked.mint {panic!()}
   if &seller_ata_unpacked.owner != seller.key{panic!()}
+  msg!("5");
 
   let mut pda_account_data: NFTTerms = NFTTerms::try_from_slice(&pda.data.borrow())?;
 
   if pda_account_data.for_sale != 0{panic!()}
   if pda_account_data.tokenized_for_sale != 0{panic!()}
+  msg!("4");
 
   let nft_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.nft_mint);
 
   if &nft_from_bytes != nft_mint.key {panic!()}
+  msg!("3");
 
   //creating mint account
   let ix = &system_instruction::create_account(  
     &seller.key, 
     &tokenization_mint.key,
-    create_account.lamports,
-    create_account.size,
+    terms.tokenization_account,
+    terms.tokenization_account_size,
     &token_program_2022.key
   );
 
@@ -1241,9 +1236,17 @@ impl Processor {
    Some(pda.key),
    0)?;
 
+  let create_seller_tokenization_ata: solana_program::instruction::Instruction = create_associated_token_account(
+    seller.key,
+    seller.key, 
+    tokenization_mint.key, 
+    token_program_2022.key);
+
+
   invoke(ix,  &[seller.clone(),tokenization_mint.clone(),token_program_2022.clone(),])?;
   invoke(&init_metadata_pointer,  &[pda.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
   invoke(&ix_2,  &[pda.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
+  invoke(&create_seller_tokenization_ata, &[seller.clone(),seller_tokenization_ata.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
 
   //transfering nft to program
   if token_program.key == &spl_token::id(){
@@ -1253,7 +1256,7 @@ impl Processor {
             &registered_nft_account_ata.key, 
             &seller.key, 
             &[],1,0)?;
-         invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),seller_ata.clone(),registered_nft_account_ata.clone(),seller.clone()])?; 
+         invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),seller_ata.clone(),nft_mint.clone(),registered_nft_account_ata.clone(),seller.clone()])?; 
   }else if token_program.key == &spl_token_2022::id(){
           let transfer_nft_to_registered_nft_account_ata = spl_token_2022::instruction::transfer_checked( &token_program.key,
             &seller_ata.key, 
@@ -1261,15 +1264,20 @@ impl Processor {
             &registered_nft_account_ata.key, 
             &seller.key, 
             &[],1,0)?;
-          invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),seller_ata.clone(),registered_nft_account_ata.clone(),seller.clone()])?; 
+          invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),nft_mint.clone(),seller_ata.clone(),registered_nft_account_ata.clone(),seller.clone()])?; 
   }else{panic!()}
-
+  msg!("2");
 
   if data.buy_out_price < data.price{panic!()}
+  msg!("2");
   if data.lamports_per_token < terms.minimum_lamports_per_token{panic!()}
+  msg!("3");
   if data.lamports_per_token % terms.minimum_lamports_per_token != 0{panic!()}
+  msg!("4");
   if data.lamports_per_token_buyout < terms.minimum_lamports_per_token{panic!()}
+  msg!("5");
   if data.lamports_per_token_buyout % terms.minimum_lamports_per_token != 0{panic!()}
+  msg!("finish");
 
   let price: u64 = data.number_of_tokens*data.lamports_per_token;
 
@@ -1288,7 +1296,6 @@ impl Processor {
   pda_account_data.number_of_tokens= data.number_of_tokens;
   pda_account_data.lamports_per_token = data.lamports_per_token;
   pda_account_data.tokens_sold= 0;
-  pda_account_data.bump=create_account.bump;
 
   pda_account_data.serialize(&mut &mut pda.data.borrow_mut()[..])?;
 
@@ -1636,7 +1643,7 @@ impl Processor {
       &buyer.key, 
       &tokenized_nft_account.key,
       terms.token_to_sol_account,
-      terms.token_distribution_account_size,
+      terms.mint_account_size,
       &program_id
     );
     invoke(&ix,  &[buyer.clone(),token_program.clone(),tokenized_nft_account.clone(),])?;
@@ -2144,7 +2151,7 @@ impl Processor {
         &system_instruction::create_account(  
             &voter.key, 
             &voter_pda.key,
-            terms.token_distribution_account,
+            terms.mint_account,
             1,
             &program_id
         ),
