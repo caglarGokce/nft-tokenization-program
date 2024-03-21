@@ -86,8 +86,8 @@ impl Processor {
       NFTInstruction::BuyOutNFT {} => {
         Self::buy_out_tokenized_nft(accounts,program_id)
       }
-      NFTInstruction::TokenizeNFT {data,data2} => {
-        Self::tokenize_your_nft(accounts,data,data2,program_id)
+      NFTInstruction::TokenizeNFT {data} => {
+        Self::tokenize_your_nft(accounts,data,program_id)
       }
       NFTInstruction::InitVoting {data} => {
         Self::init_voting_to_set_new_buy_out_price(accounts,program_id,data)
@@ -186,8 +186,8 @@ impl Processor {
         &system_instruction::create_account(
           &initializer.key, 
           &token_dist_data.key,
-          terms.mint_account,
-          terms.mint_account_size,
+          terms.token_distribution_account,
+          terms.token_distribution_account_size,
           program_id),
         &[
           initializer.clone(),
@@ -200,8 +200,8 @@ impl Processor {
     let ix = &system_instruction::create_account(  
       &initializer.key, 
       &tokenization_mint.key,
-      terms.tokenization_account,
-      terms.tokenization_account_size,
+      terms.mint,
+      terms.mint_size,
       &token_2022_program.key);
 
     let init_metadata_pointer = spl_token_2022::extension::metadata_pointer::instruction::initialize(
@@ -794,8 +794,8 @@ impl Processor {
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
     if terms.is_init != 1 {panic!()}
 
-    if seller_ata.owner!= &spl_token::id() && seller_ata.owner != &spl_token_2022::id(){panic!()}//token2022 degil
-    if nft_mint.owner!= &spl_token::id() && nft_mint.owner !=  &spl_token_2022::id(){panic!()}//token2022 degil
+    if seller_ata.owner!= &spl_token::id() && seller_ata.owner != &spl_token_2022::id(){panic!()}
+    if nft_mint.owner!= &spl_token::id() && nft_mint.owner !=  &spl_token_2022::id(){panic!()}
 
     if pda.owner != program_id{panic!()}
     let seller_ata_unpacked :Account = Account::unpack_from_slice(&seller_ata.data.borrow())?;
@@ -879,8 +879,8 @@ impl Processor {
     if pda.owner != program_id {panic!()}
 
     if !seller.is_signer{panic!()}
-    if seller_ata.owner!=&spl_token::id() && seller_ata.owner!= &spl_token_2022::id(){panic!()}//token2022 degil
-    if nft_mint.owner!=&spl_token::id() && nft_mint.owner!= &spl_token_2022::id(){panic!()}//token2022 degil
+    if seller_ata.owner!=&spl_token::id() && seller_ata.owner!= &spl_token_2022::id(){panic!()}
+    if nft_mint.owner!=&spl_token::id() && nft_mint.owner!= &spl_token_2022::id(){panic!()}
 
     let seller_ata_unpacked: Account = Account::unpack_from_slice(&seller_ata.data.borrow())?;
     if nft_mint.key != &seller_ata_unpacked.mint {panic!()}
@@ -1216,8 +1216,8 @@ impl Processor {
   let ix = &system_instruction::create_account(  
     &seller.key, 
     &tokenization_mint.key,
-    terms.tokenization_account,
-    terms.tokenization_account_size,
+    terms.mint,
+    terms.mint_size,
     &token_program_2022.key
   );
 
@@ -1591,7 +1591,7 @@ impl Processor {
           &[buyer.clone(),buyer_ata.clone(),nft_mint.clone(),token_program.clone(),sysvar.clone()])?;
     }
 
-    if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
+    if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
 
     let buyer_ata_unpacked: Account = Account::unpack_from_slice(&buyer_ata.data.borrow())?;
     if nft_mint.key != &buyer_ata_unpacked.mint {panic!()}
@@ -1714,7 +1714,6 @@ impl Processor {
 
   fn tokenize_your_nft(
   accounts: &[AccountInfo],
-  create_account:InitAccount,
   data:NFTState,
   program_id: &Pubkey
   ) -> ProgramResult {
@@ -1728,11 +1727,11 @@ impl Processor {
   let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft owner in the program
   let registered_nft_account_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft ata of the pda
   let nft_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-  let tokenized_nft_token_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let token_program_2022: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-  let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
   if terms_account.owner != program_id{panic!()}
   if registered_nft_account.owner != program_id{panic!()}
@@ -1740,16 +1739,19 @@ impl Processor {
   if terms_account.is_writable{panic!()}
   let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
   if terms.is_init != 1 {panic!()}
+  msg!("1");
 
   if !owner.is_signer{panic!()}
-  if owner_ata.owner!=&spl_token::id() && owner_ata.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
-  if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
+  if owner_ata.owner!=&spl_token::id() && owner_ata.owner!=&spl_token_2022::id(){panic!()}
+  if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
 
   let owner_ata_unpacked: Account = Account::unpack_from_slice(&owner_ata.data.borrow())?;
   if nft_mint.key != &owner_ata_unpacked.mint {panic!()}
   if &owner_ata_unpacked.owner != owner.key{panic!()}
+  msg!("1");
 
   let mut registered_nft_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
+  msg!("1");
 
   if registered_nft_account_data.for_sale != 0{panic!()}
   if registered_nft_account_data.tokenized_for_sale != 0{panic!()}
@@ -1761,16 +1763,23 @@ impl Processor {
   //creating mint account
   let ix = &system_instruction::create_account(  
     &owner.key, 
-    &tokenized_nft_token_mint.key,
-    create_account.lamports,
-    create_account.size,
+    &tokenization_mint.key,
+    terms.mint,
+    terms.mint_size,
     &token_program_2022.key
   );
 
-  //minting tokens to nft owner
-  let ix_2 = spl_token_2022::instruction::initialize_mint2(
+  let init_metadata_pointer = spl_token_2022::extension::metadata_pointer::instruction::initialize(
     token_program_2022.key,
-   tokenized_nft_token_mint.key,
+    tokenization_mint.key,
+    Some(*registered_nft_account.key),
+    Some(*tokenization_mint.key),
+  )?;
+
+  //minting tokens to nft owner
+  let ix_2 = spl_token_2022::instruction::initialize_mint(
+    token_program_2022.key,
+   tokenization_mint.key,
    registered_nft_account.key,
    Some(registered_nft_account.key),
    0)?;
@@ -1778,23 +1787,30 @@ impl Processor {
   let ix_3 = create_associated_token_account(
     owner.key,
     owner.key,
-    tokenized_nft_token_mint.key,
+    tokenization_mint.key,
     token_program_2022.key,
     );
 
   let ix_4 = spl_token_2022::instruction::mint_to_checked(
       token_program_2022.key,
-      tokenized_nft_token_mint.key,
+      tokenization_mint.key,
       owner_tokenization_ata.key,
       registered_nft_account.key,
       &[&registered_nft_account.key],
       data.number_of_tokens,0
     )?;
 
-  invoke(ix,  &[owner.clone(),tokenized_nft_token_mint.clone(),token_program_2022.clone(),])?;
-  invoke(&ix_2,  &[registered_nft_account.clone(),tokenized_nft_token_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
-  invoke(&ix_3,  &[owner.clone(),tokenized_nft_token_mint.clone(),token_program_2022.clone(),sysvar.clone(),owner_tokenization_ata.clone()])?;
-  invoke(&ix_4,  &[registered_nft_account.clone(),tokenized_nft_token_mint.clone(),token_program_2022.clone(),sysvar.clone(),owner_tokenization_ata.clone()])?;
+  invoke(ix,  &[owner.clone(),tokenization_mint.clone(),token_program_2022.clone(),])?;
+  invoke(&init_metadata_pointer,  &[registered_nft_account.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
+  invoke(&ix_2,  &[registered_nft_account.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
+  invoke(&ix_3,  &[owner.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone(),owner_tokenization_ata.clone()])?;
+  
+  let seed: &[u8] = &nft_mint.key.to_bytes();
+  
+  invoke_signed(&ix_4,
+      &[registered_nft_account.clone(),tokenization_mint.clone(),token_program_2022.clone(),owner_tokenization_ata.clone()],
+      &[&[seed, &[data.bump]]],
+    )?;
 
 
   let transfer_nft_to_registered_nft_account_ata: solana_program::instruction::Instruction;
@@ -1816,7 +1832,7 @@ impl Processor {
             &[],1,0)?;
   }else{panic!()}
 
-  invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),owner_ata.clone(),registered_nft_account_ata.clone(),owner.clone()])?; 
+  invoke(&transfer_nft_to_registered_nft_account_ata,&[token_program.clone(),nft_mint.clone(),owner_ata.clone(),registered_nft_account_ata.clone(),owner.clone()])?; 
 
 
   if data.lamports_per_token < terms.minimum_lamports_per_token{panic!()}
@@ -1830,7 +1846,7 @@ impl Processor {
 
   registered_nft_account_data.owner= owner.key.to_bytes();
   registered_nft_account_data.nft_mint= nft_mint.key.to_bytes();
-  registered_nft_account_data.tokenization_mint= tokenized_nft_token_mint.key.to_bytes();
+  registered_nft_account_data.tokenization_mint= tokenization_mint.key.to_bytes();
   registered_nft_account_data.for_sale=0;
   registered_nft_account_data.buy_out_allowed=1;
   registered_nft_account_data.owned_by_pda=1;
@@ -1841,7 +1857,7 @@ impl Processor {
   registered_nft_account_data.number_of_tokens= data.number_of_tokens;
   registered_nft_account_data.lamports_per_token = data.lamports_per_token;
   registered_nft_account_data.tokens_sold= 0;
-  registered_nft_account_data.bump=create_account.bump;
+  registered_nft_account_data.bump=data.bump;
 
 
   registered_nft_account_data.serialize(&mut &mut registered_nft_account.data.borrow_mut()[..])?;
@@ -2165,7 +2181,7 @@ impl Processor {
         &system_instruction::create_account(  
             &voter.key, 
             &voter_pda.key,
-            terms.mint_account,
+            terms.token_distribution_account,
             1,
             &program_id
         ),
@@ -2209,8 +2225,8 @@ impl Processor {
       if proposal_account.owner != program_id {panic!()}
 
 
-      if proposer_ata.owner!=&spl_token::id() && proposer_ata.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
-      if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
+      if proposer_ata.owner!=&spl_token::id() && proposer_ata.owner!=&spl_token_2022::id(){panic!()}
+      if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
   
       let proposer_ata_unpacked: Account = Account::unpack_from_slice(&proposer_ata.data.borrow())?;
       if nft_mint.key != &proposer_ata_unpacked.mint {panic!()}
@@ -2345,8 +2361,8 @@ impl Processor {
       if proposer_investor_account.owner != program_id {panic!()}
       if proposal_account.owner != program_id {panic!()}
 
-      if proposer_ata.owner!=&spl_token::id() && proposer_ata.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
-      if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}//token2022 degil
+      if proposer_ata.owner!=&spl_token::id() && proposer_ata.owner!=&spl_token_2022::id(){panic!()}
+      if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
   
       let proposer_ata_unpacked: Account = Account::unpack_from_slice(&proposer_ata.data.borrow())?;
       if nft_mint.key != &proposer_ata_unpacked.mint {panic!()}

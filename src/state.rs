@@ -3,7 +3,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
-pub struct NFTTerms{
+pub struct NFTState{
     pub owner:[u8;32],//Satici addresi - Satildiktan sonra pda adresi olur
     pub nft_mint:[u8;32],// nftnin mint addresi
     pub tokenization_mint:[u8;32], //tokenize olmus nftnin mint addresi
@@ -94,7 +94,7 @@ pub struct Proposal{
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct Lamports{
-    pub lamports:u64,
+    pub lamports:u64,//&number of tokens to buy for instruction 9
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
@@ -131,14 +131,14 @@ pub struct Terms{
     pub vote_account_size:u64,
     pub proposal_account:u64,
     pub proposal_account_size:u64,
-    pub tokenization_account:u64,
-    pub tokenization_account_size:u64,
-    pub mint_account:u64,
-    pub mint_account_size:u64,
+    pub mint:u64,
+    pub mint_size:u64,
+    pub token_distribution_account:u64,
+    pub token_distribution_account_size:u64,
     pub usertokenmint_account:u64,
     pub usertokenmint_account_size:u64,//64
     pub token_to_sol_account:u64,
-    pub token_to_sol_account_size:u64,//50
+    pub token_to_sol_account_size:u64,//56
     pub lamports_per_token_fundraising:u64,
     pub minimum_lamports_per_token:u64,
 
