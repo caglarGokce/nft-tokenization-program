@@ -128,6 +128,9 @@ impl Processor {
       NFTInstruction::UpdateTerms {data} => {
         Self::update_terms(accounts,program_id,data)
       }
+      NFTInstruction::RemoveFundsInvestorAcc {data} => {
+        Self::remove_funds_from_investor_account(accounts,program_id,data)
+      }
     }
   }
 
@@ -391,6 +394,13 @@ impl Processor {
     let token_distribution_data: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let token_2022_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let useradresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+
+    if terms_account.owner != program_id{panic!()}
+    if terms_account.is_writable{panic!()}
+    let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
+    if terms.is_init != 1 {panic!()}
 
     if !funder.is_signer{panic!()}
 
@@ -438,6 +448,23 @@ impl Processor {
         &[&[seed, &[distribution.bump]]],
       )?;
 
+      
+      let ix2: &solana_program::instruction::Instruction = &system_instruction::create_account(  
+        &funder.key, 
+        &useradresstokenmint.key,
+        terms.usertokenmint_account,
+        terms.usertokenmint_account_size,
+        &program_id
+      );
+
+      invoke(&ix2,  &[funder.clone(),useradresstokenmint.clone(),])?;
+
+
+      let usertoken = UserAddresTokenMint{
+        user:funder.key.to_bytes(),
+        mint:tokenization_mint.key.to_bytes()
+      };
+
       let val: u64 =  **funder_funds_account.lamports.borrow();
 
       **funder_funds_account.lamports.borrow_mut()-= val;
@@ -445,6 +472,8 @@ impl Processor {
 
 
       distribution.serialize(&mut &mut token_distribution_data.data.borrow_mut()[..])?;
+      usertoken.serialize(&mut &mut useradresstokenmint.data.borrow_mut()[..])?;
+
 
     Ok(())
   }
@@ -870,13 +899,13 @@ impl Processor {
 
     let seller: &AccountInfo<'_> = next_account_info(accounts_iter)?; //check
     let seller_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?; //transfer nft back to here
-    let pda: &AccountInfo<'_> = next_account_info(accounts_iter)?;//transfer nft back
+    let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//transfer nft back
     let registered_nft_account_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft ata of the pda
     let nft_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;//check
     let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
 
-    if pda.owner != program_id {panic!()}
+    if registered_nft_account.owner != program_id {panic!()}
 
     if !seller.is_signer{panic!()}
     if seller_ata.owner!=&spl_token::id() && seller_ata.owner!= &spl_token_2022::id(){panic!()}
@@ -888,9 +917,9 @@ impl Processor {
 
     let registered_nft_account_ata_unpacked: Account = Account::unpack_from_slice(&registered_nft_account_ata.data.borrow())?;
     if nft_mint.key != &registered_nft_account_ata_unpacked.mint {panic!()}
-    if &registered_nft_account_ata_unpacked.owner != pda.key{panic!()}
+    if &registered_nft_account_ata_unpacked.owner != registered_nft_account.key{panic!()}
 
-    let mut pda_account_data: NFTState = NFTState::try_from_slice(&pda.data.borrow())?;
+    let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
 
     if pda_account_data.for_sale != 1{panic!()}
     if pda_account_data.tokenized_for_sale != 0{panic!()}
@@ -910,14 +939,14 @@ impl Processor {
         &registered_nft_account_ata.key, 
         &nft_mint.key, 
         &seller_ata.key, 
-        &pda.key, 
+        &registered_nft_account.key, 
         &[],1,0)?;
     }else if token_program.key == &spl_token_2022::id(){
       transfer_nft_to_seller=spl_token_2022::instruction::transfer_checked( &token_program.key,
         &registered_nft_account_ata.key, 
         &nft_mint.key, 
         &seller_ata.key, 
-        &pda.key, 
+        &registered_nft_account.key, 
         &[],1,0)?;
     }else{panic!()}
 
@@ -929,7 +958,7 @@ impl Processor {
       &[
         seller_ata.clone(),
         registered_nft_account_ata.clone(),
-        pda.clone(), 
+        registered_nft_account.clone(), 
         token_program.clone(),
         nft_mint.clone()
       ],
@@ -945,7 +974,7 @@ impl Processor {
     pda_account_data.buy_out_price = 0;
     pda_account_data.lamports_per_token = 0;
 
-    pda_account_data.serialize(&mut &mut pda.data.borrow_mut()[..])?;
+    pda_account_data.serialize(&mut &mut registered_nft_account.data.borrow_mut()[..])?;
 
 
     //nft saticisi sell_nft_as_whole_in_this_program fonksiyonu ile baslattigi satisi iptal eder.
@@ -966,14 +995,14 @@ impl Processor {
     let buyer: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
     let temp: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
     let buyer_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
-    let pda: &AccountInfo<'_> = next_account_info(accounts_iter)?;//transfer nft back
+    let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//transfer nft back
     let registered_nft_account_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft ata of the pda
     let nft_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;//check
     let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
     msg!("1");
-    if pda.owner != program_id {panic!()}
+    if registered_nft_account.owner != program_id {panic!()}
     if !buyer.is_signer {panic!()}
 
     if buyer_ata.owner!=&spl_token::id() && buyer_ata.owner!=&spl_token_2022::id(){
@@ -998,10 +1027,10 @@ impl Processor {
 
     let registered_nft_account_ata_unpacked: Account = Account::unpack_from_slice(&registered_nft_account_ata.data.borrow())?;
     if nft_mint.key != &registered_nft_account_ata_unpacked.mint {panic!()}
-    if &registered_nft_account_ata_unpacked.owner != pda.key{panic!()}
+    if &registered_nft_account_ata_unpacked.owner != registered_nft_account.key{panic!()}
     msg!("4");
 
-    let mut pda_account_data: NFTState = NFTState::try_from_slice(&pda.data.borrow())?;
+    let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
 
     if pda_account_data.for_sale != 1{panic!()}
     if pda_account_data.tokenized_for_sale != 0{panic!()}
@@ -1036,14 +1065,14 @@ impl Processor {
         &registered_nft_account_ata.key, 
         &nft_mint.key, 
         &buyer_ata.key, 
-        &pda.key, &[],
+        &registered_nft_account.key, &[],
         1,0)?;
     }else if token_program.key == &spl_token_2022::id(){
       transfer_nft_to_buyer =spl_token_2022::instruction::transfer_checked( &token_program.key,
         &registered_nft_account_ata.key, 
         &nft_mint.key, 
         &buyer_ata.key, 
-        &pda.key, &[],
+        &registered_nft_account.key, &[],
         1,0)?;
     }else{panic!()}
     msg!("8");
@@ -1053,14 +1082,14 @@ impl Processor {
         &[
           buyer_ata.clone(),
           registered_nft_account_ata.clone(),
-          pda.clone(), 
+          registered_nft_account.clone(), 
           token_program.clone(),
           nft_mint.clone()
         ],
         &[&[seed, &[pda_account_data.bump]]],
      )?;
 
-    pda_account_data.owner = buyer.key.to_bytes();
+    pda_account_data.owner = [0;32];
     pda_account_data.tokenization_mint = [0;32];
     pda_account_data.for_sale = 0;
     pda_account_data.number_of_tokens = 0;
@@ -1071,7 +1100,7 @@ impl Processor {
 
     msg!("9");
 
-    pda_account_data.serialize(&mut &mut pda.data.borrow_mut()[..])?;
+    pda_account_data.serialize(&mut &mut registered_nft_account.data.borrow_mut()[..])?;
   
     //fonksiyonu cagiran bu program da satilan bir nft'nin hepsini satin alir ve cuzdaninda sahip olur.
     //oteki yatirimcilar varliklarini geri iade alir.
@@ -1115,7 +1144,7 @@ impl Processor {
 
     let mut tokenized_nft_data: TokenToSol = TokenToSol::try_from_slice(&tokenized_nft_token_account.data.borrow())?;
 
-    let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(tokenized_nft_data.tokenized_nft_mint);
+    let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(tokenized_nft_data.tokenization_mint);
 
     if &tokenization_mint_key_from_bytes != tokenized_nft_token_mint.key{panic!()}
 
@@ -1327,17 +1356,13 @@ impl Processor {
     let useradresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
-    msg!("7");
     if terms_account.owner != program_id{panic!()}
     if terms_account.is_writable{panic!()}
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
     if terms.is_init != 1 {panic!()}
 
-    msg!("6");
     if registered_nft_account.owner != program_id {panic!()}
-    msg!("1");
     if !buyer.is_signer {panic!()}
-    msg!("2");
 
     if buyer_tokenization_ata.owner!=&spl_token::id() && buyer_tokenization_ata.owner!=&spl_token_2022::id(){
       let create_buyer_ata: solana_program::instruction::Instruction = create_associated_token_account(
@@ -1350,18 +1375,15 @@ impl Processor {
           &[buyer.clone(),buyer_tokenization_ata.clone(),tokenization_mint.clone(),token_program_2022.clone(),sysvar.clone()])?;
     }
     if tokenization_mint.owner!=&spl_token::id() && tokenization_mint.owner!=&spl_token_2022::id(){panic!()}
-    msg!("5");
 
     let buyer_ata_unpacked: Account = Account::unpack_from_slice(&buyer_tokenization_ata.data.borrow())?;
     if tokenization_mint.key != &buyer_ata_unpacked.mint {panic!()}
     if &buyer_ata_unpacked.owner != buyer.key{panic!()}
-    msg!("4");
 
     let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
 
     if pda_account_data.for_sale != 0{panic!()}
     if pda_account_data.tokenized_for_sale != 1{panic!()}
-    msg!("3");
 
     let seller_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.owner);
     let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.tokenization_mint);
@@ -1370,7 +1392,6 @@ impl Processor {
     if &seller_key_from_bytes != seller.key{panic!()}
     if &tokenization_mint_key_from_bytes != tokenization_mint.key{panic!()}
     if &nft_mint_key_from_bytes != nft_mint.key{panic!()}
-    msg!("2");
 
 
     let value: u64 = **buyer.lamports.borrow();
@@ -1389,7 +1410,6 @@ impl Processor {
 
     invoke(create_temp,  &[buyer.clone(),temp.clone()])?;
 
-    msg!("1");
 
     let seed: &[u8] = &nft_mint.key.to_bytes();
 
@@ -1420,7 +1440,7 @@ impl Processor {
         &program_id
       );
 
-      invoke(&ix2,  &[buyer.clone(),token_program_2022.clone(),useradresstokenmint.clone(),])?;
+      invoke(&ix2,  &[buyer.clone(),useradresstokenmint.clone(),])?;
 
 
     pda_account_data.tokens_sold += data.lamports;
@@ -1429,7 +1449,6 @@ impl Processor {
     if pda_account_data.number_of_tokens == pda_account_data.tokens_sold{
       pda_account_data.owner = registered_nft_account.key.to_bytes();
       pda_account_data.tokenized_for_sale = 0;
-    msg!("condition");
 
     }
 
@@ -1460,31 +1479,26 @@ impl Processor {
     let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
     let owner: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let owner_tokenized_nft_token_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let owner_tokenization_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let nft_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let tokenized_nft_token_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let pda: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft owner in the program
-    let pda_nft_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft owner in the program
     let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
 
-    if pda.owner != program_id {panic!()}
+    if registered_nft_account.owner != program_id {panic!()}
     if !owner.is_signer {panic!()}
 
-    if owner_tokenized_nft_token_ata.owner!=&spl_token::id() && owner_tokenized_nft_token_ata.owner!=&spl_token_2022::id(){panic!()}
-    if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
-    if pda_nft_ata.owner!=&spl_token::id() && pda_nft_ata.owner!=&spl_token_2022::id(){panic!()}
-    if tokenized_nft_token_mint.owner!=&spl_token::id() && tokenized_nft_token_mint.owner!=&spl_token_2022::id(){panic!()}
+    if owner_tokenization_ata.owner!=&spl_token::id() && owner_tokenization_ata.owner!=&spl_token_2022::id(){panic!()}
+    if tokenization_mint.owner!=&spl_token::id() && tokenization_mint.owner!=&spl_token_2022::id(){panic!()}
 
-    let pda_nft_ata_unpacked: Account = Account::unpack_from_slice(&pda_nft_ata.data.borrow())?;
-    if nft_mint.key != &pda_nft_ata_unpacked.mint {panic!()}
-    if &pda_nft_ata_unpacked.owner != pda.key{panic!()}
 
-    let owner_tokenized_nft_token_ata_unpacked: Account = Account::unpack_from_slice(&owner_tokenized_nft_token_ata.data.borrow())?;
-    if tokenized_nft_token_mint.key != &owner_tokenized_nft_token_ata_unpacked.mint {panic!()}
+
+    let owner_tokenized_nft_token_ata_unpacked: Account = Account::unpack_from_slice(&owner_tokenization_ata.data.borrow())?;
+    if tokenization_mint.key != &owner_tokenized_nft_token_ata_unpacked.mint {panic!()}
     if &owner_tokenized_nft_token_ata_unpacked.owner != owner.key{panic!()}
 
-    let mut pda_account_data: NFTState = NFTState::try_from_slice(&pda.data.borrow())?;
+    let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
 
     if pda_account_data.for_sale != 0{panic!()}
     if pda_account_data.tokenized_for_sale != 1{panic!()}
@@ -1492,58 +1506,38 @@ impl Processor {
     let owner_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.owner);
     let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.tokenization_mint);
     let nft_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.nft_mint);
+    if &nft_mint_key_from_bytes != nft_mint.key {panic!()}
 
     if &owner_key_from_bytes != owner.key {panic!()}
-    if &tokenization_mint_key_from_bytes != tokenized_nft_token_mint.key {panic!()}
-    if &nft_mint_key_from_bytes != nft_mint.key {panic!()}
+    if &tokenization_mint_key_from_bytes != tokenization_mint.key {panic!()}
 
     let tokens_left: u64 = pda_account_data.number_of_tokens - pda_account_data.tokens_sold;
 
 
-/*
-    let transfer_nft_to_owner = transfer( &token_program.key,
-      &pda_nft_ata.key, 
-      &owner_nft_ata.key, 
-      &pda.key, 
-      &[&pda.key], 
-      1)?;
-*/
     let transfer_tokens_to_owner = spl_token_2022::instruction::mint_to_checked( &token_program.key,
-        &tokenized_nft_token_mint.key, 
-        &owner_tokenized_nft_token_ata.key, 
-        &pda.key, 
-        &[&pda.key], 
+        &tokenization_mint.key, 
+        &owner_tokenization_ata.key, 
+        &registered_nft_account.key, 
+        &[&registered_nft_account.key], 
         tokens_left,0)?;
 
-  let seed: &[u8] = &nft_mint.key.to_bytes();
+    let seed: &[u8] = &nft_mint.key.to_bytes();
     
-/*
-    if pda_account_data.tokens_sold == 0{
-      invoke_signed(&transfer_nft_to_owner,       
-        &[
-        pda_nft_ata.clone(), 
-        owner_nft_ata.clone(), 
-        pda.clone(), 
-        token_program.clone()
-      ],
-      &[&[seed, &[pda_account_data.bump]]],)?;
-      pda_account_data.owner = owner.key.to_bytes();
 
-    }else{*/
-      invoke_signed(&transfer_tokens_to_owner, &[
-        token_program.clone(),
-        owner_tokenized_nft_token_ata.clone(),
-        tokenized_nft_token_mint.clone(),
-        pda.clone(),
-      ],
-      &[&[seed, &[pda_account_data.bump]]],)?;
-      pda_account_data.owner = pda.key.to_bytes();
-    //}
+    invoke_signed(&transfer_tokens_to_owner, &[
+      token_program.clone(),
+      owner_tokenization_ata.clone(),
+      tokenization_mint.clone(),
+      registered_nft_account.clone(),
+    ],
+    &[&[seed, &[pda_account_data.bump]]],)?;
+    pda_account_data.owner = registered_nft_account.key.to_bytes();
+
 
     pda_account_data.tokenized_for_sale = 0;
 
 
-    pda_account_data.serialize(&mut &mut pda.data.borrow_mut()[..])?;
+    pda_account_data.serialize(&mut &mut registered_nft_account.data.borrow_mut()[..])?;
    
     //nft saticisi tokenize_nft_and_sell_in_this_program fonksiyonu ile satisa cikardigi nftsinin satisini iptal eder
     //bedel token olarak cuzdanina gelir, nft tokenize olarak programda kalir
@@ -1666,7 +1660,7 @@ impl Processor {
 
 
     let tokenization_account_data: TokenToSol = TokenToSol{
-        tokenized_nft_mint: pda_account_data.tokenization_mint,
+        tokenization_mint: pda_account_data.tokenization_mint,
         number_of_tokens: pda_account_data.number_of_tokens,
         lamports_per_token,
         tokens_sold: pda_account_data.tokens_sold,
@@ -1691,7 +1685,7 @@ impl Processor {
       **tokenized_nft_account.lamports.borrow_mut()+= comm_share;
     }
 
-    pda_account_data.owner = buyer.key.to_bytes();
+    pda_account_data.owner = [0;32];
     pda_account_data.tokenization_mint = [0;32];
     pda_account_data.for_sale = 0;
     pda_account_data.tokenized_for_sale = 0;
@@ -1889,7 +1883,7 @@ impl Processor {
     if terms_account.owner != program_id{panic!()}
 
     let mut registered_nft_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
-    let  terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
+    let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
 
     if terms.is_init != 1{panic!()}
 
@@ -1926,20 +1920,20 @@ impl Processor {
         proposer.clone(),
         vote_account_pda.clone(), 
       ],
-      &[&[seed, &[data.vote_account_pda]]],
+      &[&[b"vote",seed2, &[data.vote_account_pda]]],
     )?;
 
     let clock: Clock= Clock::get()?;
     let current_time: u64 = clock.unix_timestamp as u64;
 
     let vote: VoteAccount = VoteAccount{
-       tokenized_nft_mint: registered_nft_account_data.nft_mint, 
+       tokenization_mint: registered_nft_account_data.tokenization_mint, 
        new_buy_out_price_accept_votes: proposer_ata_unpacked.amount, 
        new_buy_out_price_refuse_votes: 0, 
        voting_ends: current_time + 86400, 
        new_buy_out_offer: data.offer, 
        voting_no:1
-      };
+    };
 
     let voter_account: InitPDA = InitPDA{
         init_pda: 1,
@@ -1989,7 +1983,7 @@ impl Processor {
       if registered_nft_account_data.tokenized_for_sale != 0{panic!()}
       if registered_nft_account_data.vote_open != 0{panic!()}
 
-      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenized_nft_mint);
+      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenization_mint);
       let tokenization_mint_key_from_bytes_2: Pubkey = Pubkey::new_from_array(registered_nft_account_data.tokenization_mint);
 
       let proposer_ata_unpacked: Account = Account::unpack_from_slice(&propser_tokenization_ata.data.borrow())?;
@@ -2005,7 +1999,7 @@ impl Processor {
       if votes.voting_ends > current_time {panic!()}
   
       let seed:&[u8]= &proposer.key.to_bytes();
-      let seed2:&[u8]= &votes.tokenized_nft_mint;
+      let seed2:&[u8]= &votes.tokenization_mint;
   
   
       let derived_pda: Pubkey = Pubkey::create_program_address(&[seed,seed2, &[data.proposer_pda]], program_id)?;
@@ -2046,41 +2040,49 @@ impl Processor {
   
       if !voter.is_signer{panic!()}
       if vote_account_pda.owner != program_id{panic!()}
+      msg!("8");
       if voter_pda.owner != program_id{panic!()}
-  
+      msg!("7");
       if voter_ata.owner!=&spl_token::id() && voter_ata.owner!=&spl_token_2022::id(){panic!()}
+      msg!("6");
 
       let mut votes: VoteAccount = VoteAccount::try_from_slice(&vote_account_pda.data.borrow())?;
       let mut voter_account: InitPDA = InitPDA::try_from_slice(&voter_pda.data.borrow())?;
 
-      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenized_nft_mint);
+      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenization_mint);
 
       let voter_ata_unpacked: Account = Account::unpack_from_slice(&voter_ata.data.borrow())?;
       if tokenization_mint_key_from_bytes != voter_ata_unpacked.mint {panic!()}
+      msg!("4");
       if &voter_ata_unpacked.owner != voter.key{panic!()}
+      msg!("5");
 
       if voter_account.init_pda >= votes.voting_no{panic!()}
+      msg!("4");
 
 
       let clock: Clock= Clock::get()?;
       let current_time: u64 = clock.unix_timestamp as u64;
 
       if votes.voting_ends < current_time {panic!()}
+      msg!("3");
   
       let seed:&[u8]= &voter.key.to_bytes();
-      let seed2:&[u8]= &votes.tokenized_nft_mint;
+      let seed2:&[u8]= &votes.tokenization_mint;
   
   
       let derived_pda: Pubkey = Pubkey::create_program_address(&[seed,seed2, &[data.vote_account_pda_bump]], program_id)?;
       if &derived_pda != voter_pda.key{panic!()}
+      msg!("2");
 
       if data.refuse_accept == 1 {
         votes.new_buy_out_price_refuse_votes += voter_ata_unpacked.amount;
 
       }else if data.refuse_accept == 2 {
       votes.new_buy_out_price_accept_votes += voter_ata_unpacked.amount;
-          
+
       }else{panic!()}
+      msg!("1");
 
       voter_account.init_pda = votes.voting_no;
     
@@ -2106,27 +2108,38 @@ impl Processor {
   
       if vote_account_pda.owner != program_id{panic!()}
       if registered_nft_account.owner != program_id{panic!()}
+      msg!("8");
 
       let mut votes: VoteAccount = VoteAccount::try_from_slice(&vote_account_pda.data.borrow())?;
       let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
       let owner: Pubkey = Pubkey::new_from_array(pda_account_data.owner);
+      msg!("7");
 
       if pda_account_data.for_sale != 0{panic!()}
+      msg!("6");
       if pda_account_data.tokenized_for_sale != 0{panic!()}
+      msg!("5");
       if &owner != registered_nft_account.key {panic!()}
+      msg!("4");
       if pda_account_data.vote_open != 1 {panic!()}
 
+      msg!("3");
 
-      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenized_nft_mint);
+      let tokenization_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(votes.tokenization_mint);
       let tokenization_mint_key_from_bytes_2: Pubkey = Pubkey::new_from_array(pda_account_data.tokenization_mint);
 
+      msg!("2");
       if tokenization_mint_key_from_bytes != tokenization_mint_key_from_bytes_2 {panic!()}
 
 
       let clock: Clock= Clock::get()?;
       let current_time: u64 = clock.unix_timestamp as u64;
+{
+      msg!("{}",current_time);
+      msg!("{}",votes.voting_ends);
 
-      if votes.voting_ends > current_time {panic!()}
+    }
+     // if votes.voting_ends > current_time {panic!()}
 
       if votes.new_buy_out_price_accept_votes > votes.new_buy_out_price_refuse_votes {
         pda_account_data.buy_out_price = votes.new_buy_out_offer;
@@ -2152,19 +2165,14 @@ impl Processor {
   fn init_voter_account(
     accounts: &[AccountInfo],
     program_id: &Pubkey,
-    data:StartVoting) -> ProgramResult {
+    data:InitAccount) -> ProgramResult {
 
       let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
       let voter: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let voter_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let voter_pda: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-      let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
-      if terms_account.owner != program_id{panic!()}
-      if terms_account.is_writable{panic!()}
-      let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
-      if terms.is_init != 1 {panic!()}
 
       if !voter.is_signer{panic!()}
   
@@ -2181,7 +2189,7 @@ impl Processor {
         &system_instruction::create_account(  
             &voter.key, 
             &voter_pda.key,
-            terms.token_distribution_account,
+            data.lamports,
             1,
             &program_id
         ),
@@ -2189,13 +2197,15 @@ impl Processor {
           voter.clone(),
           voter_pda.clone(), 
         ],
-        &[&[seed,seed2, &[data.proposer_pda]]],
+        &[&[seed,seed2, &[data.bump]]],
       )?;
     
     //likide oylamasinda oy kullanir
  
     Ok(())
   }
+
+////////////////////////////////////////////////////////////////////////////////////
 
   fn sell_nft_owned_by_program_to_investor(
     accounts: &[AccountInfo],
@@ -2224,9 +2234,9 @@ impl Processor {
       if proposer_investor_account.owner != program_id {panic!()}
       if proposal_account.owner != program_id {panic!()}
 
-
       if proposer_ata.owner!=&spl_token::id() && proposer_ata.owner!=&spl_token_2022::id(){panic!()}
       if nft_mint.owner!=&spl_token::id() && nft_mint.owner!=&spl_token_2022::id(){panic!()}
+      if registered_nft_account_ata.owner!=&spl_token::id() && registered_nft_account_ata.owner!=&spl_token_2022::id(){panic!()}
   
       let proposer_ata_unpacked: Account = Account::unpack_from_slice(&proposer_ata.data.borrow())?;
       if nft_mint.key != &proposer_ata_unpacked.mint {panic!()}
@@ -2239,14 +2249,14 @@ impl Processor {
       let mut pda_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
       let mut investor_acc: InvestorAccount = InvestorAccount::try_from_slice(&proposer_investor_account.data.borrow())?;
       let proposal: Proposal = Proposal::try_from_slice(&proposal_account.data.borrow())?;
-  
-  
+
+
       let owner_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.owner);
       let nft_mint_key_from_bytes: Pubkey = Pubkey::new_from_array(pda_account_data.nft_mint);
       let nft_mint_key_from_bytes2: Pubkey = Pubkey::new_from_array(proposal.nft_mint);
       let proposer_key_from_bytes: Pubkey = Pubkey::new_from_array(investor_acc.investor);
       let proposer_key_from_bytes2: Pubkey = Pubkey::new_from_array(proposal.proposer);
-  
+
       if &owner_key_from_bytes != registered_nft_account.key{panic!()}
       if &nft_mint_key_from_bytes != nft_mint.key{panic!()}
       if &nft_mint_key_from_bytes2 != nft_mint.key{panic!()}
@@ -2255,12 +2265,12 @@ impl Processor {
 
       if proposal.offer < pda_account_data.buy_out_price{panic!()}
       if proposal.offer > investor_acc.lamports{panic!()}
-
+      if pda_account_data.buy_out_allowed != 1{panic!()}
         //transfering nft to program
         let transfer_nft_to_buyer: solana_program::instruction::Instruction;
 
 
-        if token_program.key == &spl_token::id(){
+      if token_program.key == &spl_token::id(){
           transfer_nft_to_buyer=spl_token::instruction::transfer_checked( &token_program.key,
             &registered_nft_account_ata.key, 
              &nft_mint.key, 
@@ -2269,7 +2279,7 @@ impl Processor {
              &[], 
              1, 
              0)?;
-        }else if token_program.key == &spl_token_2022::id(){
+      }else if token_program.key == &spl_token_2022::id(){
           transfer_nft_to_buyer=spl_token_2022::instruction::transfer_checked(&token_program.key,
             &registered_nft_account_ata.key, 
              &nft_mint.key, 
@@ -2278,26 +2288,26 @@ impl Processor {
              &[], 
              1, 
              0)?;
+      }else{panic!()}
 
-        }else{panic!()}
 
-  
       let seed: &[u8] = &nft_mint.key.to_bytes();
-  
+
       invoke_signed(
           &transfer_nft_to_buyer,
           &[
             proposer_ata.clone(),
           registered_nft_account_ata.clone(),
           registered_nft_account.clone(), 
-          token_program.clone()
+          token_program.clone(),
+          nft_mint.clone(),
         ],
           &[&[seed, &[pda_account_data.bump]]],
       )?;
-  
+
       let lamports_per_token = pda_account_data.buy_out_price/pda_account_data.number_of_tokens;
-      //TODO hesaplama uzerine calisilmasi gerek
-  
+
+
       let ix: &solana_program::instruction::Instruction = &system_instruction::create_account(  
         &proposer.key, 
         &tokenized_nft_account.key,
@@ -2307,15 +2317,15 @@ impl Processor {
       );
   
       invoke(&ix,  &[proposer.clone(),tokenized_nft_account.clone(),])?;
-  
+
       let tokenization_account_data: TokenToSol = TokenToSol{
-          tokenized_nft_mint: pda_account_data.tokenization_mint,
+          tokenization_mint: pda_account_data.tokenization_mint,
           number_of_tokens: pda_account_data.number_of_tokens,
           lamports_per_token,
           tokens_sold: pda_account_data.tokens_sold,
       };
   
-      pda_account_data.owner = proposer.key.to_bytes();
+      pda_account_data.owner = [0;32];
       pda_account_data.tokenization_mint = [0;32];
       pda_account_data.for_sale = 0;
       pda_account_data.number_of_tokens = 0;
@@ -2396,7 +2406,7 @@ impl Processor {
             &seller_ata.key, 
              &nft_mint.key, 
              &proposer_ata.key, 
-             &proposer.key, 
+             &seller.key, 
              &[], 
              1, 
              0)?;
@@ -2405,7 +2415,7 @@ impl Processor {
             &seller_ata.key, 
              &nft_mint.key, 
              &proposer_ata.key, 
-             &proposer.key, 
+             &seller.key, 
              &[], 
              1, 
              0)?;
@@ -2418,8 +2428,9 @@ impl Processor {
           &[
             proposer_ata.clone(),
             seller_ata.clone(),
-            proposer.clone(), 
-          token_program.clone()
+            seller.clone(), 
+          token_program.clone(),
+          nft_mint.clone()
         ],
       )?;
 
@@ -2434,8 +2445,6 @@ impl Processor {
     Ok(())
   }
 
-////////////////////////////////////////////////////////////////////////////////////
-
   fn make_an_offer_for_nft(
   accounts: &[AccountInfo],
   program_id: &Pubkey,
@@ -2446,11 +2455,30 @@ impl Processor {
   let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
   let proposer: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let proposer_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let proposer_investor_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let proposal_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let nft_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+
+  if terms_account.owner != program_id{panic!()}
+
+  if terms_account.is_writable{panic!()}
+  let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
+  if terms.is_init != 1 {panic!()}
 
   if !proposer.is_signer{panic!()}
+
+  let create_buyer_ata: solana_program::instruction::Instruction = create_associated_token_account(
+    proposer.key,
+    proposer.key, 
+    nft_mint.key, 
+    token_program.key);
+
+  invoke(&create_buyer_ata,
+      &[proposer.clone(),proposer_ata.clone(),nft_mint.clone(),token_program.clone(),sysvar.clone()])?;
 
   let investor_acc: InvestorAccount = InvestorAccount::try_from_slice(&proposer_investor_account.data.borrow())?;
 
@@ -2460,8 +2488,8 @@ impl Processor {
   let ix: &solana_program::instruction::Instruction = &system_instruction::create_account(  
     &proposer.key, 
     &proposal_account.key,
-    data.lamports,
-    72,
+    terms.proposal_account,
+    terms.proposal_account_size,
     &program_id
   );
 
@@ -2475,7 +2503,7 @@ impl Processor {
 
   proposal.serialize(&mut &mut proposal_account.data.borrow_mut()[..])?;
 
-   
+
    //fonksiyon belirlenen mintteki nftnin alimi icin teklif acar.
    //satis gerceklesirse teklifteki bedel alicinin yatirim hesabindan cekilir.
    //teklif bir kisiye aittir.
@@ -2495,6 +2523,13 @@ impl Processor {
 
     let investor: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let investor_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  
+    if terms_account.owner != program_id{panic!()}
+  
+    if terms_account.is_writable{panic!()}
+    let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
+    if terms.is_init != 1 {panic!()}
 
     if !investor.is_signer{panic!()}
 
@@ -2504,8 +2539,8 @@ impl Processor {
     let ix: &solana_program::instruction::Instruction = &system_instruction::create_account(  
       &investor.key, 
       &investor_account.key,
-      data.lamports,
-      40,
+      terms.investor_account,
+      terms.investor_account_size,
       &program_id
     );
 
@@ -2533,22 +2568,63 @@ impl Processor {
 
     let investor: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let investor_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let temp: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+
+    let ix = &system_instruction::create_account(  
+      &investor.key, 
+      &temp.key,
+      data.lamports,
+      0,
+      &program_id);
+
+    invoke(ix,  &[temp.clone(),investor.clone()])?;
 
     if !investor.is_signer{panic!()}
     if investor_account.owner != program_id{panic!()}
 
     let mut investor_acc: InvestorAccount = InvestorAccount::try_from_slice(&investor_account.data.borrow())?;
 
-    if **investor.lamports.borrow() < data.lamports{panic!()}
-    
-    **investor.lamports.borrow_mut()-= data.lamports;
+
+    **temp.lamports.borrow_mut()-= data.lamports;
     **investor_account.lamports.borrow_mut()+= data.lamports;
 
     let inverstor_address_from_bytes: Pubkey = Pubkey::new_from_array(investor_acc.investor);
 
     if &inverstor_address_from_bytes != investor.key {panic!()}
     
-    investor_acc.lamports = data.lamports;
+    investor_acc.lamports += data.lamports;
+
+    investor_acc.serialize(&mut &mut investor_account.data.borrow_mut()[..])?;
+
+
+    Ok(())
+  }
+
+  fn remove_funds_from_investor_account(
+    accounts: &[AccountInfo],
+    program_id: &Pubkey,
+    data:Lamports) -> ProgramResult {
+
+    let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
+
+    let investor: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let investor_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+
+    if !investor.is_signer{panic!()}
+    if investor_account.owner != program_id{panic!()}
+
+    let mut investor_acc: InvestorAccount = InvestorAccount::try_from_slice(&investor_account.data.borrow())?;
+
+    if **investor_account.lamports.borrow() < data.lamports{panic!()}
+    
+    **investor_account.lamports.borrow_mut()-= data.lamports;
+    **investor.lamports.borrow_mut() += data.lamports;
+
+    let inverstor_address_from_bytes: Pubkey = Pubkey::new_from_array(investor_acc.investor);
+
+    if &inverstor_address_from_bytes != investor.key {panic!()}
+    
+    investor_acc.lamports -= data.lamports;
 
     investor_acc.serialize(&mut &mut investor_account.data.borrow_mut()[..])?;
 

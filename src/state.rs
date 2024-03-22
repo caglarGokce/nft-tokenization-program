@@ -64,7 +64,7 @@ pub struct InitAccount{
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct TokenToSol{
-    pub tokenized_nft_mint:[u8;32],
+    pub tokenization_mint:[u8;32],
     pub number_of_tokens:u64, 
     pub lamports_per_token:u64,
     pub tokens_sold:u64,
@@ -72,7 +72,7 @@ pub struct TokenToSol{
 
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
 pub struct VoteAccount{
-    pub tokenized_nft_mint:[u8;32],
+    pub tokenization_mint:[u8;32],
     pub new_buy_out_price_accept_votes:u64,
     pub new_buy_out_price_refuse_votes:u64,
     pub voting_ends:u64,
@@ -139,6 +139,8 @@ pub struct Terms{
     pub usertokenmint_account_size:u64,//64
     pub token_to_sol_account:u64,
     pub token_to_sol_account_size:u64,//56
+    pub investor_account:u64,
+    pub investor_account_size:u64,
     pub lamports_per_token_fundraising:u64,
     pub minimum_lamports_per_token:u64,
 
