@@ -23,8 +23,8 @@ module.exports = function (config, env) {
         resolve: {
             ...config.resolve,
             fallback: {
-                assert: require.resolve('assert'),
-                buffer: require.resolve('buffer'),
+                ...config.resolve.fallback,
+                crypto: require.resolve('crypto-browserify'),
                 stream: require.resolve('stream-browserify'),
             },
         },
