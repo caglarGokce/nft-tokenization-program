@@ -9,3 +9,4 @@ pub mod tokenizenft;
 pub mod vote;
 pub mod service;
 pub mod market;
+pub mod dex;

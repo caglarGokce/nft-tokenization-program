@@ -143,7 +143,40 @@ pub struct Terms{
     pub investor_account_size:u64,
     pub lamports_per_token_fundraising:u64,
     pub minimum_lamports_per_token:u64,
+    pub buy_sell_order_account:u64,
+    pub buy_sell_order_account_size:u64,
+    pub small_account:u64,
 
 }
 
 
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub struct SellOrder{
+    pub is_init:u8,
+    pub seller:[u8;32],
+    pub tokenization_mint:[u8;32],
+    pub price_per_token:u64,
+    pub amount_to_sell:u64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
+pub struct BuyOrder{
+    pub is_init:u8,
+    pub buyer:[u8;32],
+    pub tokenization_mint:[u8;32],
+    pub price_per_token:u64,
+    pub amount_to_buy:u64,
+}
+
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+pub struct SellToken{
+    pub price_per_token:u64,
+    pub amount_to_sell:u64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+pub struct BuyToken{
+    pub price_per_token:u64,
+    pub amount_to_buy:u64,
+}

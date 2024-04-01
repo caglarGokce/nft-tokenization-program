@@ -1,5 +1,5 @@
 use crate::error::MailError::InvalidInstruction;
-use crate::state::{ InitPDA, StartVoting,  Lamports, InitAccount, NFTState,  VoteData, Terms};
+use crate::state::{ BuyToken, InitAccount, InitPDA, Lamports, NFTState, SellToken, StartVoting, Terms, VoteData};
 use borsh::BorshDeserialize;
 use solana_program::program_error::ProgramError;
 
@@ -37,6 +37,13 @@ pub enum NFTInstruction {
   UpdateTerms{data:Terms},
   BuyNFTFundsProgrm,
   RemoveFundsInvestorAcc{data:Lamports},
+  MakeOfferForTokens{data:BuyToken},
+  SellTokensToOffer{data:Lamports},
+  CancelOffer,
+  ListTokensForSale{data:SellToken},
+  BuyTokens{data:Lamports},
+  CancelTokenSale,
+  InitDex,
 }
 
 
@@ -114,6 +121,21 @@ impl NFTInstruction {
      31 => Self::RemoveFundsInvestorAcc{
       data: Lamports::try_from_slice(&rest)?,
      },
+     32 => Self::MakeOfferForTokens{
+      data: BuyToken::try_from_slice(&rest)?,
+     },
+     33 => Self::SellTokensToOffer{
+      data: Lamports::try_from_slice(&rest)?,
+     },
+     34 => Self::CancelOffer,
+     35 => Self::ListTokensForSale{
+      data: SellToken::try_from_slice(&rest)?,
+     },
+     36 => Self::BuyTokens{
+      data: Lamports::try_from_slice(&rest)?,
+     },
+     37 => Self::CancelTokenSale,
+     38 => Self::InitDex,
 
       _ => return Err(InvalidInstruction.into()),
     })

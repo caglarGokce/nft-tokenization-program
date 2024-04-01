@@ -8,11 +8,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 use spl_associated_token_account::instruction::create_associated_token_account;
 
 use solana_program::{
-  account_info::{next_account_info, AccountInfo},
-  entrypoint::ProgramResult,
-  pubkey::Pubkey,
-  system_instruction,
-  program::{invoke_signed,invoke},
+  account_info::{next_account_info, AccountInfo}, entrypoint::ProgramResult, msg, program::{invoke, invoke_signed}, pubkey::Pubkey, system_instruction
 
 };
 
@@ -39,10 +35,14 @@ use solana_program::{
     let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?; //NFT ile ilgili butun bilgilerin tutuldugu hesaptir
     let token_2022_program: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
     let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//Hesaplarin size ve rent datasi burda
+    let dex: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
+    let dex_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?; 
     let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
+    if dex.owner != program_id{panic!()}
     if registered_nft_account.owner != program_id{panic!()}
     if terms_account.owner != program_id{panic!()}
+    if dex.is_writable{panic!()}
     if terms_account.is_writable{panic!()}
 
     let registered_nft_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
@@ -50,8 +50,11 @@ use solana_program::{
 
     if nft_mint.owner != &spl_token::id() && nft_mint.owner != &spl_token_2022::id(){panic!()}
 
+    let dex_data: Terms = Terms::try_from_slice(&dex.data.borrow())?;
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
     if terms.is_init != 1 {panic!()}
+    if dex_data.is_init != 5 {panic!()}
+
     if !initializer.is_signer{panic!()}
 
     let seed: &[u8] = &nft_mint.key.to_bytes();
@@ -132,6 +135,14 @@ use solana_program::{
     invoke(&init_metadata_pointer,  &[initializer.clone(),token_dist_data.clone(),tokenization_mint.clone(),token_2022_program.clone(),sysvar.clone()])?;
     invoke(&init_mint,  &[initializer.clone(),token_dist_data.clone(),tokenization_mint.clone(),token_2022_program.clone(),sysvar.clone()])?;
 
+    let create_dex_ata: solana_program::instruction::Instruction = create_associated_token_account(
+      initializer.key,
+      dex.key, 
+      tokenization_mint.key, 
+      token_2022_program.key);
+  
+    invoke(&create_dex_ata,
+        &[initializer.clone(),dex_ata.clone(),dex.clone(),tokenization_mint.clone(),token_2022_program.clone(),sysvar.clone()])?;
 
     let fundraising: FundRaising = FundRaising{ 
         fund_raising:1,
@@ -141,16 +152,14 @@ use solana_program::{
         number_of_tokens: 0,
         lamports_per_token: terms.lamports_per_token_fundraising,
         bump:bump
-        };
+    };
 
-  
     let distribution: DistData = DistData{
       token_mint:tokenization_mint.key.to_bytes(),
       distribution_open: 0,
       tokens_left: 0,
       bump: create_account.bump,
     };
-
 
   distribution.serialize(&mut &mut token_dist_data.data.borrow_mut()[..])?;
   fundraising.serialize(&mut &mut fundrasing_account.data.borrow_mut()[..])?;
@@ -172,29 +181,80 @@ use solana_program::{
     let funders_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let fundraising_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft owner in the program
     let temp: &AccountInfo<'_> = next_account_info(accounts_iter)?;//nft owner in the program
+    let funder_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let token_program: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
     if !funder.is_signer{panic!()}
-
-    if funders_account.owner != program_id{panic!()}
-    if fundraising_account.owner != program_id{panic!()}
-
-    let mut funders_account_data: FunderAccount = FunderAccount::try_from_slice(&funders_account.data.borrow())?;
-    let mut fundraising: FundRaising = FundRaising::try_from_slice(&fundraising_account.data.borrow())?;
-
+    msg!("1");
+      let mut fundraising: FundRaising = FundRaising::try_from_slice(&fundraising_account.data.borrow())?;
+  
+      if fundraising_account.owner != program_id{panic!()}
+    msg!("2");
     if fundraising.fund_raising != 1 {panic!()}
+    msg!("3");
+  
 
-    let funder_address_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.funder);
-    if &funder_address_from_bytes != funder.key {panic!()}
+      let nft_mint_from_bytes2: Pubkey = Pubkey::new_from_array(fundraising.nft_mint);
+      let tokenization_mint_from_bytes2: Pubkey = Pubkey::new_from_array(fundraising.tokens_mint);
+      msg!("{}",tokenization_mint_from_bytes2.to_string());
+      msg!("{}",tokenization_mint.key.to_string());
+      if &tokenization_mint_from_bytes2 != tokenization_mint.key {panic!()}
+      msg!("5",);
 
 
-    let nft_mint_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.nft_mint);
-    let nft_mint_from_bytes2: Pubkey = Pubkey::new_from_array(fundraising.nft_mint);
-    if nft_mint_from_bytes != nft_mint_from_bytes2 {panic!()}
+      let mut fund_invested:u64 = 0;
+  
+      if funders_account.owner != program_id{
+        msg!("4");
 
+          if terms_account.owner != program_id{panic!()}
+          let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
+          if terms.is_init != 1{panic!()}
+       msg!("5");
+      
+          invoke(
+            &system_instruction::create_account(  
+                &funder.key, 
+                &funders_account.key,
+                terms.funder_account,
+                terms.funder_account_size,
+                &program_id
+            ),
+            &[
+              funder.clone(),
+              funders_account.clone(), 
+            ],
+          )?;
+        
+          let create_funder_ata: solana_program::instruction::Instruction = create_associated_token_account(
+            funder.key,
+            funder.key, 
+            tokenization_mint.key, 
+            token_program.key);
+      
+          invoke(&create_funder_ata,  &[funder.clone(),tokenization_mint.clone(),funder_ata.clone(),token_program.clone()])?;
 
-    let tokenization_mint_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.tokens_mint);
-    let tokenization_mint_from_bytes2: Pubkey = Pubkey::new_from_array(fundraising.tokens_mint);
-    if tokenization_mint_from_bytes != tokenization_mint_from_bytes2{panic!()}
+      }else{
+        msg!("9");
+
+          let funders_account_data: FunderAccount = FunderAccount::try_from_slice(&funders_account.data.borrow())?;
+    
+          let funder_address_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.funder);
+          if &funder_address_from_bytes != funder.key {panic!()}
+           msg!("6");
+      
+          let nft_mint_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.nft_mint);
+          if nft_mint_from_bytes != nft_mint_from_bytes2 {panic!()}
+          msg!("7");
+    
+          let tokenization_mint_from_bytes: Pubkey = Pubkey::new_from_array(funders_account_data.tokens_mint);
+          if tokenization_mint_from_bytes != tokenization_mint_from_bytes2{panic!()}
+           msg!("8");
+      
+          fund_invested = funders_account_data.fund_invested;
+      }
 
     let ix = &system_instruction::create_account(  
       &funder.key, 
@@ -205,7 +265,6 @@ use solana_program::{
 
     invoke(ix,  &[funder.clone(),temp.clone()])?;
 
-
     let number_of_tokens: u64 = data.lamports/fundraising.lamports_per_token;
 
     let fund_raise: u64 = number_of_tokens*fundraising.lamports_per_token;
@@ -213,16 +272,26 @@ use solana_program::{
     let value: u64 = **temp.lamports.borrow();
 
     if value != fund_raise {panic!()}
+    msg!("9");
+
+    fund_invested += fund_raise;
+    fundraising.funds_collected += fund_raise;
+    fundraising.number_of_tokens += number_of_tokens;
 
     **temp.lamports.borrow_mut()-= fund_raise;
     **fundraising_account.lamports.borrow_mut()+= fund_raise;
 
-    funders_account_data.fund_invested += fund_raise;
-    fundraising.funds_collected += fund_raise;
-    fundraising.number_of_tokens += number_of_tokens;
+    let funders: FunderAccount = FunderAccount{
+      funder:funder.key.to_bytes(),
+      nft_mint:fundraising.nft_mint,
+      tokens_mint:fundraising.tokens_mint,
+      fund_invested,
+      lamports_per_token:fundraising.lamports_per_token
+    };
 
+    funders.serialize(&mut &mut funders_account.data.borrow_mut()[..])?;
     fundraising.serialize(&mut &mut fundraising_account.data.borrow_mut()[..])?;
-    funders_account_data.serialize(&mut &mut funders_account.data.borrow_mut()[..])?;
+
 
 
     Ok(())
@@ -310,7 +379,7 @@ use solana_program::{
 
     if funder_funds_account.owner != program_id{panic!()}
     if token_distribution_data.owner != program_id{panic!()}
-    
+
     check_mint_and_owner(tokenization_mint.key, funder.key, funder_ata);
 
 
@@ -352,7 +421,7 @@ use solana_program::{
       )?;
 
       
-      let ix2: &solana_program::instruction::Instruction = &system_instruction::create_account(  
+      let createuseradrestokenmint: &solana_program::instruction::Instruction = &system_instruction::create_account(  
         &funder.key, 
         &useradresstokenmint.key,
         terms.usertokenmint_account,
@@ -360,7 +429,7 @@ use solana_program::{
         &program_id
       );
 
-      invoke(&ix2,  &[funder.clone(),useradresstokenmint.clone(),])?;
+      invoke(&createuseradrestokenmint,  &[funder.clone(),useradresstokenmint.clone(),])?;
 
 
       let usertoken = UserAddresTokenMint{

@@ -11,14 +11,12 @@ use solana_program::{
   pubkey::Pubkey,
   system_instruction,
   program::{invoke_signed,invoke},
-
 };
 
 use check::check_mint_and_owner;
 
 
-
-pub fn  list_nft_forsale_as_whole_in_this_program(
+  pub fn  list_nft_forsale_as_whole_in_this_program(
     accounts: &[AccountInfo],
     program_id: &Pubkey,
     data: NFTState,
@@ -264,7 +262,6 @@ pub fn  list_nft_forsale_as_whole_in_this_program(
 
     Ok(())
   }
-
 
   pub fn sell_nft_owned_by_program_to_investor(
     accounts: &[AccountInfo],

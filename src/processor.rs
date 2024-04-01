@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{fundraise, market, tokenizenft, vote};
+use crate::{dex, fundraise, market, tokenizenft, vote};
 use crate::instruction::NFTInstruction;
 use crate::state::{ InitPDA,  NFTState, Terms, };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -129,9 +129,29 @@ impl Processor {
       NFTInstruction::UpdateTerms {data} => {
         Self::update_terms(accounts,program_id,data)
       }
+      NFTInstruction::MakeOfferForTokens {data} => {
+        dex::make_offer_for_tokens(accounts,program_id,data)
+      }
+      NFTInstruction::SellTokensToOffer {data} => {
+        dex::sell_tokens_to_offer(accounts,program_id,data)
+      }
+      NFTInstruction::CancelOffer  => {
+        dex::cancel_offer(accounts,program_id)
+      }
+      NFTInstruction::ListTokensForSale {data} => {
+        dex::list_tokens_for_sale(accounts,program_id,data)
+      }
+      NFTInstruction::BuyTokens {data} => {
+        dex::buy_tokens(accounts,program_id,data)
+      }
+      NFTInstruction::CancelTokenSale  => {
+        dex::cancel_token_sale(accounts,program_id)
+      }
+      NFTInstruction::InitDex  => {
+        dex::init_dex(accounts,program_id)
+      }
     }
   }
-
 
 
 
