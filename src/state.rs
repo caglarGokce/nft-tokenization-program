@@ -116,10 +116,8 @@ pub struct InvestorAccount{
     pub lamports:u64,
 }
 
-
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct Terms{
-   
     pub is_init:u8,
     pub funder_account:u64,
     pub funder_account_size:u64,
@@ -149,7 +147,6 @@ pub struct Terms{
 
 }
 
-
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct SellOrder{
     pub is_init:u8,
@@ -167,7 +164,6 @@ pub struct BuyOrder{
     pub price_per_token:u64,
     pub amount_to_buy:u64,
 }
-
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
 pub struct SellToken{

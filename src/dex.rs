@@ -1,9 +1,8 @@
 
 use crate::check::check_mint_and_owner;
 use crate::service:: create_token_transfer_instruction;
-use crate::state::{ BuyOrder, BuyToken, InitPDA, Lamports,  SellOrder, SellToken,  Terms, UserAddresTokenMint};
+use crate::state::{ BuyOrder, BuyToken, InitPDA, Lamports, NFTState, SellOrder, SellToken, Terms};
 use borsh::{BorshDeserialize, BorshSerialize};
-
 
 use solana_program::program::invoke;
 
@@ -12,7 +11,6 @@ use solana_program::{
   account_info::{next_account_info, AccountInfo},
   entrypoint::ProgramResult,
   pubkey::Pubkey,
-
   system_instruction,
   program::invoke_signed,
 };
@@ -25,32 +23,24 @@ pub fn make_offer_for_tokens(
     program_id: &Pubkey,
     buytoken:BuyToken) -> ProgramResult {
 
-
     let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
     let buyer: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let buyer_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let dex_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let dex: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let useradresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+    let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let buy_order: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let token_2022: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
-    let dex_data: InitPDA = InitPDA::try_from_slice(&dex.data.borrow())?;
 
     if terms.is_init != 1 {panic!()}
-    if dex_data.init_pda != 5 {panic!()}
-
 
     if !buyer.is_signer{panic!()}
     if terms_account.owner != program_id{panic!()}
-    if dex.owner != program_id{panic!()}
     if terms_account.is_writable {panic!()}
-    if dex.is_writable {panic!()}
     if tokenization_mint.owner!=&spl_token_2022::id(){panic!()}
 
     if buyer_ata.owner!=&spl_token_2022::id(){
@@ -66,39 +56,12 @@ pub fn make_offer_for_tokens(
       check_mint_and_owner(tokenization_mint.key,buyer.key,buyer_ata);
     }
 
-    if useradresstokenmint.owner != program_id {
-      invoke(
-        &system_instruction::create_account(  
-            &buyer.key, 
-            &useradresstokenmint.key,
-            terms.usertokenmint_account,
-            terms.usertokenmint_account_size,
-            &program_id
-        ),
-        &[
-          buyer.clone(),
-          useradresstokenmint.clone(), 
-        ],
-  
-      )?;
-
-    let uatm_data = UserAddresTokenMint{
-      user:buyer.key.to_bytes(),
-      mint:tokenization_mint.key.to_bytes()
-    };
-
-    uatm_data.serialize(&mut &mut useradresstokenmint.data.borrow_mut()[..])?;
-
-    }else{
-    let uatm_data: UserAddresTokenMint = UserAddresTokenMint::try_from_slice(&useradresstokenmint.data.borrow())?;
-    let mint_from_bytes = Pubkey::new_from_array(uatm_data.mint);
-    let buyer_from_bytes = Pubkey::new_from_array(uatm_data.user);
-    if &buyer_from_bytes != buyer.key {panic!()}
+    if registered_nft_account.owner != program_id {panic!()}
+    
+    let nft_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
+    let mint_from_bytes = Pubkey::new_from_array(nft_data.tokenization_mint);
     if &mint_from_bytes != tokenization_mint.key {panic!()}
-    }
-
-    check_mint_and_owner(tokenization_mint.key,dex.key,dex_ata);
-
+    
 
     let total_value = buytoken.price_per_token*buytoken.amount_to_buy;
 
@@ -142,16 +105,12 @@ pub fn sell_tokens_to_offer(
       let buyer_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let seller: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let seller_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-      let dex: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-      let dex_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-      let useradresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let buy_order: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
       let token_2022: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
       let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
-      let dex_data: InitPDA = InitPDA::try_from_slice(&dex.data.borrow())?;
       let mut order: BuyOrder = BuyOrder::try_from_slice(&buy_order.data.borrow())?;
 
       let buyer_from_bytes = Pubkey::new_from_array(order.buyer);
@@ -160,30 +119,20 @@ pub fn sell_tokens_to_offer(
       if &mint_from_bytes != tokenization_mint.key {panic!()}
   
       if terms.is_init != 1 {panic!()}
-      if dex_data.init_pda != 5 {panic!()}
       if order.is_init != 13 {panic!()}
   
       if !seller.is_signer{panic!()}
       if terms_account.owner != program_id{panic!()}
-      if dex.owner != program_id{panic!()}
       if terms_account.is_writable {panic!()}
-      if dex.is_writable {panic!()}
       if tokenization_mint.owner!=&spl_token_2022::id(){panic!()}
-  
-      let uatm_data: UserAddresTokenMint = UserAddresTokenMint::try_from_slice(&useradresstokenmint.data.borrow())?;
-      let mint_from_bytes2 = Pubkey::new_from_array(uatm_data.mint);
-      let seller_from_bytes = Pubkey::new_from_array(uatm_data.user);
-      if &seller_from_bytes != seller.key {panic!()}
-      if &mint_from_bytes2 != tokenization_mint.key {panic!()}
 
-      check_mint_and_owner(tokenization_mint.key,dex.key,dex_ata);
+
       check_mint_and_owner(tokenization_mint.key,seller.key,seller_ata);
       check_mint_and_owner(tokenization_mint.key,buyer.key,buyer_ata);
 
       if order.amount_to_buy < amount.lamports{panic!()}
 
       let total_value = amount.lamports*order.price_per_token;
-
 
       let transfer_token_ix = create_token_transfer_instruction(
         token_2022.key,
@@ -200,11 +149,11 @@ pub fn sell_tokens_to_offer(
 
          order.amount_to_buy-=amount.lamports;
 
-      **dex.lamports.borrow_mut()-= total_value;
+      **buy_order.lamports.borrow_mut()-= total_value;
       **seller.lamports.borrow_mut()+= total_value;
 
       order.serialize(&mut &mut buy_order.data.borrow_mut()[..])?;
-    
+
 
     Ok(())
   }
@@ -250,7 +199,7 @@ pub fn list_tokens_for_sale(
   let dex_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let sell_order: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-  let useraddresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
+  let registered_nft_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let token_2022: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
@@ -267,15 +216,13 @@ pub fn list_tokens_for_sale(
   if seller_ata.owner!=&spl_token_2022::id(){panic!()}
   if dex_ata.owner!=&spl_token_2022::id(){panic!()}
 
-  let uatm_data: UserAddresTokenMint = UserAddresTokenMint::try_from_slice(&useraddresstokenmint.data.borrow())?;
-  let mint_from_bytes = Pubkey::new_from_array(uatm_data.mint);
-  let seller_from_bytes = Pubkey::new_from_array(uatm_data.user);
-  if &seller_from_bytes != seller.key {panic!()}
+  let uatm_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
+  let mint_from_bytes = Pubkey::new_from_array(uatm_data.tokenization_mint);
   if &mint_from_bytes != tokenization_mint.key {panic!()}
   
   let  dex_data: InitPDA = InitPDA::try_from_slice(&dex.data.borrow())?;
 
-  if dex_data.init_pda != 9 {panic!()}
+  if dex_data.init_pda != 5 {panic!()}
 
 
   if &mint_from_bytes != tokenization_mint.key {panic!()}
@@ -324,7 +271,6 @@ pub fn buy_tokens(
     let tokenization_mint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let sell_order: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let temp: &AccountInfo<'_> = next_account_info(accounts_iter)?;
-    let useraddresstokenmint: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let terms_account: &AccountInfo<'_> = next_account_info(accounts_iter)?;
     let token_2022: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
@@ -340,37 +286,6 @@ pub fn buy_tokens(
 
     if buyer_ata.owner!=&spl_token_2022::id(){panic!()}
     if dex_ata.owner!=&spl_token_2022::id(){panic!()}
-
-    if useraddresstokenmint.owner != program_id {
-      invoke(
-        &system_instruction::create_account(  
-            &buyer.key, 
-            &useraddresstokenmint.key,
-            terms.usertokenmint_account,
-            terms.usertokenmint_account_size,
-            &program_id
-        ),
-        &[
-          buyer.clone(),
-          useraddresstokenmint.clone(), 
-        ],
-  
-      )?;
-
-    let uatm_data = UserAddresTokenMint{
-      user:buyer.key.to_bytes(),
-      mint:tokenization_mint.key.to_bytes()
-    };
-
-    uatm_data.serialize(&mut &mut useraddresstokenmint.data.borrow_mut()[..])?;
-
-    }else{
-    let uatm_data: UserAddresTokenMint = UserAddresTokenMint::try_from_slice(&useraddresstokenmint.data.borrow())?;
-    let mint_from_bytes = Pubkey::new_from_array(uatm_data.mint);
-    let buyer_from_bytes = Pubkey::new_from_array(uatm_data.user);
-    if &buyer_from_bytes != buyer.key {panic!()}
-    if &mint_from_bytes != tokenization_mint.key {panic!()}
-    }
 
 
     let mut order: SellOrder = SellOrder::try_from_slice(&sell_order.data.borrow())?;
@@ -477,7 +392,7 @@ pub fn cancel_token_sale(
     Ok(())
   }
 
-  pub fn init_dex(
+pub fn init_dex(
     accounts: &[AccountInfo],
     program_id: &Pubkey) -> ProgramResult {
 
@@ -508,4 +423,3 @@ pub fn cancel_token_sale(
 
     Ok(())
   }
-

@@ -1,15 +1,20 @@
 
 
 
-use crate::{check::check_mint_and_owner, service::create_nft_transfer_instruction, state::{DistData, FundRaising, FunderAccount, InitAccount, InitPDA, Lamports, NFTState, Terms, UserAddresTokenMint  }};
+use crate::{
+  check::check_mint_and_owner, 
+  service::create_nft_transfer_instruction, 
+  state::{DistData, FundRaising, FunderAccount, InitAccount, InitPDA, Lamports, 
+    NFTState, Terms, UserAddresTokenMint  }};
 use borsh::{BorshDeserialize, BorshSerialize};
-
 
 use spl_associated_token_account::instruction::create_associated_token_account;
 
 use solana_program::{
-  account_info::{next_account_info, AccountInfo}, entrypoint::ProgramResult, msg, program::{invoke, invoke_signed}, pubkey::Pubkey, system_instruction
-
+  account_info::{next_account_info, AccountInfo}, 
+  entrypoint::ProgramResult, msg,
+  program::{invoke, invoke_signed}, 
+  pubkey::Pubkey, system_instruction
 };
 
   //NFT satin almak icin fon toplama baslatilir.
@@ -420,7 +425,6 @@ use solana_program::{
         &[&[seed, &[distribution.bump]]],
       )?;
 
-      
       let createuseradrestokenmint: &solana_program::instruction::Instruction = &system_instruction::create_account(  
         &funder.key, 
         &useradresstokenmint.key,
@@ -430,7 +434,6 @@ use solana_program::{
       );
 
       invoke(&createuseradrestokenmint,  &[funder.clone(),useradresstokenmint.clone(),])?;
-
 
       let usertoken = UserAddresTokenMint{
         user:funder.key.to_bytes(),
@@ -442,10 +445,8 @@ use solana_program::{
       **funder_funds_account.lamports.borrow_mut()-= val;
       **funder.lamports.borrow_mut()+= val;
 
-
       distribution.serialize(&mut &mut token_distribution_data.data.borrow_mut()[..])?;
       usertoken.serialize(&mut &mut useradresstokenmint.data.borrow_mut()[..])?;
-
 
     Ok(())
   }
@@ -738,4 +739,5 @@ use solana_program::{
 
     Ok(())
   }
+
 
