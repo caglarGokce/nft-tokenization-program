@@ -1,8 +1,8 @@
 import React, { FC, useEffect, useState } from "react";
-import { NFTonSale, NFTTerms } from "./model";
+import { NFTonSale, NFTTerms } from "./src/model";
 import { vote, init_voting_to_set_new_buy_out_price } from "./service";
-import { get_nfts_on_sale } from "./getAccounts";
-import DashboardLayout from "./layouts/dashboard";
+import { get_nfts_on_sale } from "./src/getAccounts";
+import DashboardLayout from "./src/layouts/dashboard";
 
 interface MyTokenizedNFTsProps {
   // Define prop types if needed
