@@ -208,6 +208,9 @@ export class Terms {
   investor_account_size: bigint = BigInt(0);
   lamports_per_token_fundraising: bigint = BigInt(0);
   minimum_lamports_per_token: bigint = BigInt(0);
+  buy_sell_order_account:bigint = BigInt(0);
+  buy_sell_order_account_size:bigint = BigInt(0);
+  small_account:bigint = BigInt(0);
 
   constructor(fields?: {
       is_init?: number;
@@ -233,6 +236,9 @@ export class Terms {
       investor_account_size?: bigint ;
       lamports_per_token_fundraising?: bigint;
       minimum_lamports_per_token?: bigint;
+      buy_sell_order_account:bigint;
+      buy_sell_order_account_size:bigint;
+      small_account:bigint;
 
   }) {
       if (fields) {
@@ -259,6 +265,9 @@ export class Terms {
           if (fields.token_to_sol_account_size !== undefined) this.token_to_sol_account_size = fields.token_to_sol_account_size;
           if (fields.investor_account_size !== undefined) this.investor_account_size = fields. investor_account_size;
           if (fields.minimum_lamports_per_token !== undefined) this.minimum_lamports_per_token = fields. minimum_lamports_per_token;
+          if (fields.buy_sell_order_account !== undefined) this.buy_sell_order_account = fields. buy_sell_order_account;
+          if (fields.buy_sell_order_account_size !== undefined) this.buy_sell_order_account_size = fields. buy_sell_order_account_size;
+          if (fields.small_account !== undefined) this.small_account = fields. small_account;
 
       }
   }
@@ -552,6 +561,9 @@ export const TermsSchema = new Map([
         ['investor_account_size','u64'],
         ['lamports_per_token_fundraising','u64'],
         ['minimum_lamports_per_token','u64'],
+        ['buy_sell_order_account','u64'],
+        ['buy_sell_order_account_size','u64'],
+        ['small_account','u64'],
       ],
     },
   ],
@@ -663,6 +675,72 @@ export const VoteDataSchema = new Map([
 
         ['refuse_accept', 'u8'],
         ['vote_account_pda_bump', 'u8'],
+      ],
+    },
+  ],
+]);
+
+export class BuySellToken {
+  is_init:number = 0;
+  owner: number[] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,];
+  token_mint: number[] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,];
+  price_per_token: bigint = BigInt(0);
+  amount: bigint = BigInt(0);
+
+  constructor(fields?: {
+    is_init:number;
+    owner?: number[];
+    token_mint?: number[];
+    price_per_token?: bigint;
+    amount?: bigint;
+  }) {
+      if (fields) {
+        if (fields.is_init) this.is_init = fields.is_init;
+        if (fields.owner) this.owner = fields.owner;
+        if (fields.token_mint) this.token_mint = fields.token_mint;
+        if (fields.price_per_token !== undefined) this.price_per_token = fields.price_per_token;
+        if (fields.amount !== undefined) this.amount = fields.amount;
+      }
+  }
+}
+export class BuySellOrder {
+  price_per_token: bigint = BigInt(0);
+  amount: bigint = BigInt(0);
+
+  constructor(fields?: {
+    price_per_token: bigint;
+    amount: bigint;
+  }) {
+      if (fields) {
+          if (fields.price_per_token !== undefined) this.price_per_token = fields.price_per_token;
+          if (fields.amount !== undefined) this.amount = fields.amount;
+      }
+  }
+}
+
+export const BuySellOrderSchema = new Map([
+  [
+    BuySellOrder,
+    {
+      kind: 'struct',
+      fields: [
+        ['is_init', 'u8'],
+        ['buyerseller', ['u8', 32]],
+        ['token_mint', ['u8', 32]],
+        ['price_per_token', 'u64'],
+        ['amount', 'u64'],
+      ],
+    },
+  ],
+]);
+export const BuySellTokenSchema = new Map([
+  [
+    BuySellOrder,
+    {
+      kind: 'struct',
+      fields: [
+        ['price_per_token', 'u64'],
+        ['amount', 'u64'],
       ],
     },
   ],

@@ -1,13 +1,11 @@
 
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, createAssociatedTokenAccountInstruction, getAssociatedTokenAddressSync, getMinimumBalanceForRentExemptAccount} from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID  } from '@solana/spl-token';
 import { Connection, PublicKey, TransactionInstruction, SystemProgram,Keypair, LAMPORTS_PER_SOL,SYSVAR_RENT_PUBKEY} from '@solana/web3.js';
-import {programID, terms_account} from './key';
+import {dex, programID, terms_account} from './key';
 import { get_ata, get_distribution_account,  get_fundraising_account,  get_voter_pda, get_registered_nft_account_address, 
       get_vote_account_pda, sendTransaction, get_investor_account,  } from './utils';
 import { InitAccount, InitAccountSchema, InitPDA, InitPDASchema, Lamports, LamportsSchema,
-     NFTTerms, NFTTermsSchema,  StartVoting, StartVotingSchema, Terms, TermsSchema,
-     VoteData,
-     VoteDataSchema} from './model';
+     NFTTerms, NFTTermsSchema,  StartVoting, StartVotingSchema, VoteData, VoteDataSchema} from './model';
 import { serialize } from 'borsh';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 import { get_funders_account, get_token_program, get_owner, get_TokentoSol_account, get_proposal_account } from './getAccounts';
@@ -24,6 +22,7 @@ export const start_fund_raising_to_buy_nft = async (nft_mint:PublicKey,wallet:Wa
   const fundraising_account = await get_fundraising_account(nft_mint);
   const token_dist_data = await get_distribution_account(tokenization_mint.publicKey);
   const registered_nft_account = await get_registered_nft_account_address(nft_mint);
+  const dex_ata = await get_ata(dex,tokenization_mint.publicKey,true,TOKEN_2022_PROGRAM_ID);
 
   const initialize = new InitAccount();
 
@@ -46,7 +45,10 @@ export const start_fund_raising_to_buy_nft = async (nft_mint:PublicKey,wallet:Wa
             {isSigner:false,isWritable:true,pubkey:registered_nft_account[0]},
             {isSigner:false,isWritable:true,pubkey:TOKEN_2022_PROGRAM_ID},
             {isSigner:false,isWritable:false,pubkey:terms_account},
+            {isSigner:false,isWritable:false,pubkey:dex},
+            {isSigner:false,isWritable:true,pubkey:dex_ata},
             {isSigner:false,isWritable:true,pubkey:SYSVAR_RENT_PUBKEY},
+            {isSigner:false,isWritable:true,pubkey:ASSOCIATED_TOKEN_PROGRAM_ID},
             {isSigner:false,isWritable:true,pubkey:SystemProgram.programId},
         ],
         data:Buffer.from(concated)
@@ -353,7 +355,7 @@ export const cancel_sale_of_nft_as_whole_in_this_program = async (nft_mint:Publi
 
 try{await sendTransaction(wallet,[ix],signers);}catch(e){ console.log(e);}
     
-}
+}///////////
 export const buy_whole_nft_from_this_program = async (nft_mint:PublicKey,wallet:WalletContextState ) => {//12
 
 const registered_nft_account = await get_registered_nft_account_address(nft_mint);
@@ -425,6 +427,7 @@ export const tokenize_nft_and_sell_in_this_program = async (nft_mint:PublicKey,w
   const seller_tokenization_ata = await get_ata(wallet.publicKey!,token_mint.publicKey,false,TOKEN_2022_PROGRAM_ID);
   const seller_ata = await get_ata(wallet.publicKey!,nft_mint,false,token_program);
   const  registered_nft_account_ata = await get_ata(registered_nft_account[0],nft_mint,true,token_program);
+  const dex_ata = await get_ata(dex,token_mint.publicKey,true,TOKEN_2022_PROGRAM_ID);
 
 
 
@@ -455,6 +458,8 @@ export const tokenize_nft_and_sell_in_this_program = async (nft_mint:PublicKey,w
             {isSigner:false,isWritable:true,pubkey:TOKEN_2022_PROGRAM_ID},
             {isSigner:false,isWritable:true,pubkey:SYSVAR_RENT_PUBKEY},
             {isSigner:false,isWritable:false,pubkey:terms_account},
+            {isSigner:false,isWritable:false,pubkey:dex},
+            {isSigner:false,isWritable:true,pubkey:dex_ata},
             {isSigner:false,isWritable:false,pubkey:SystemProgram.programId},
             {isSigner:false,isWritable:false,pubkey:ASSOCIATED_TOKEN_PROGRAM_ID},
         ],
@@ -512,10 +517,10 @@ try{await sendTransaction(wallet,[ix],signers);}catch(e){ console.log(e);}
 }///////////
 export const stop_sale_of_tokenized_nft_and_return_tokens = async (nft_mint:PublicKey,token_mint:PublicKey,wallet:WalletContextState ) => {//13
 
-    const registered_nft_account = await get_registered_nft_account_address(nft_mint);
-    const owner_tokenization_mint_ata = await get_ata(wallet.publicKey!,token_mint,false,TOKEN_2022_PROGRAM_ID);
+const registered_nft_account = await get_registered_nft_account_address(nft_mint);
+const owner_tokenization_mint_ata = await get_ata(wallet.publicKey!,token_mint,false,TOKEN_2022_PROGRAM_ID);
     
-const useradresstokenmint = Keypair.generate();
+   const useradresstokenmint = Keypair.generate();
 
   const ix = new TransactionInstruction({
       programId:programID,
@@ -526,15 +531,18 @@ const useradresstokenmint = Keypair.generate();
           {isSigner:false,isWritable:true,pubkey:token_mint},
           {isSigner:false,isWritable:true,pubkey:registered_nft_account[0]},
           {isSigner:false,isWritable:true,pubkey:TOKEN_2022_PROGRAM_ID},
+          {isSigner:false,isWritable:true,pubkey:useradresstokenmint.publicKey},
+          {isSigner:false,isWritable:true,pubkey:terms_account},
+          {isSigner:false,isWritable:true,pubkey:SystemProgram.programId},
       ],
       data:Buffer.from([13])
   });
 
-    const signers:Keypair[]=[];
+    const signers:Keypair[]=[useradresstokenmint];
 
 
 try{await sendTransaction(wallet,[ix],signers);}catch(e){ console.log(e);}
-}
+}///////////
 export const buy_out_tokenized_nft = async (nft_mint:PublicKey,token_mint:PublicKey,wallet:WalletContextState ) => {//14
 
     const registered_nft_account = await get_registered_nft_account_address(nft_mint);
@@ -577,6 +585,8 @@ export const buy_out_tokenized_nft = async (nft_mint:PublicKey,token_mint:Public
 export const tokenize_your_nft = async (nft_mint:PublicKey,wallet:WalletContextState,lamports_per_token:number,lamports_per_token_buyout:number,number_of_tokens:number ) => {//11
 
   const token_mint = Keypair.generate();
+  const useraddresstokenmint = Keypair.generate();
+
   const registered_nft_account = await get_registered_nft_account_address(nft_mint);
   const token_program = await get_token_program(nft_mint);
   const owner_ata = await get_ata(wallet.publicKey!,nft_mint,false,token_program);
@@ -612,13 +622,14 @@ export const tokenize_your_nft = async (nft_mint:PublicKey,wallet:WalletContextS
             {isSigner:false,isWritable:true,pubkey:TOKEN_2022_PROGRAM_ID},
             {isSigner:false,isWritable:false,pubkey:terms_account},
             {isSigner:false,isWritable:true,pubkey:SYSVAR_RENT_PUBKEY},
+            {isSigner:false,isWritable:true,pubkey:useraddresstokenmint.publicKey},
             {isSigner:false,isWritable:true,pubkey:SystemProgram.programId},
             {isSigner:false,isWritable:true,pubkey:ASSOCIATED_TOKEN_PROGRAM_ID},
         ],
         data:Buffer.from(concated)
     });
   
-      const signers:Keypair[]=[token_mint];
+      const signers:Keypair[]=[token_mint,useraddresstokenmint];
 
 
 try{await sendTransaction(wallet,[ix],signers);}catch(e){ console.log(e);}

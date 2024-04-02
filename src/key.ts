@@ -9,4 +9,5 @@ export const metaplex_program = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6
 
 export const terms_account = new PublicKey("4LinJqjJPJCJKpRLQwgj1SJa4oGdU63T88oAAcxeWAGi")
 
+export const dex = new PublicKey("6CoRn1VpqSPji5WndAAMXF7MB8rGPB9tebunJ5oXK1dc");
 
