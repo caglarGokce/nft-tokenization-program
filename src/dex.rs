@@ -140,7 +140,7 @@ pub fn sell_tokens_to_offer(
         tokenization_mint.key,
         buyer_ata.key,
         seller.key,
-        amount.lamports);
+        amount.lamports,0);
   
       invoke(
          &transfer_token_ix, 
@@ -237,7 +237,7 @@ pub fn list_tokens_for_sale(
     tokenization_mint.key,
     dex_ata.key,
     seller.key,
-    selltoken.amount_to_sell);
+    selltoken.amount_to_sell,0);
 
   invoke(&transfer_token_ix, &[token_2022.clone(),seller_ata.clone(),tokenization_mint.clone(),dex_ata.clone(),seller.clone()])?;
 
@@ -283,6 +283,7 @@ pub fn buy_tokens(
     if dex.owner != program_id {panic!()}
     if terms_account.owner != program_id {panic!()}
     if terms_account.is_writable{panic!()}
+    if dex.is_writable{panic!()}
 
     if buyer_ata.owner!=&spl_token_2022::id(){panic!()}
     if dex_ata.owner!=&spl_token_2022::id(){panic!()}
@@ -322,12 +323,12 @@ pub fn buy_tokens(
       tokenization_mint.key,
       buyer_ata.key,
       dex.key,
-      amount.lamports);
+      amount.lamports,0);
 
     invoke_signed(
        &transfer_token_ix, 
        &[token_2022.clone(),dex_ata.clone(),tokenization_mint.clone(),buyer_ata.clone(),dex.clone()],
-       &[&[b"dex", &[255]]],)?;
+       &[&[b"dex", &[254]]],)?;
 
 
     **temp.lamports.borrow_mut()-= total_amount;
@@ -376,12 +377,12 @@ pub fn cancel_token_sale(
       tokenization_mint.key,
       seller_ata.key,
       dex.key,
-      order.amount_to_sell);
+      order.amount_to_sell,0);
 
     invoke_signed(
        &transfer_token_ix, 
        &[token_2022.clone(),dex_ata.clone(),tokenization_mint.clone(),seller_ata.clone(),dex.clone()],
-       &[&[b"dex", &[255]]],)?;
+       &[&[b"dex", &[254]]],)?;
 
     let total_amount = **sell_order.lamports.borrow();
       
@@ -405,14 +406,13 @@ pub fn init_dex(
         &initializer.key, 
         &dex.key,
         10000000,
-        0,
+        1,
         &program_id);
-
   
       invoke_signed(
          &create_dex, 
          &[initializer.clone(),dex.clone()],
-         &[&[b"dex", &[255]]],)?;
+         &[&[b"dex", &[254]]],)?;
 
       let dex_data = InitPDA{
         init_pda:5

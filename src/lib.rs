@@ -10,3 +10,4 @@ pub mod vote;
 pub mod service;
 pub mod market;
 pub mod dex;
+pub mod benefits;

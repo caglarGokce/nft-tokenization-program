@@ -134,9 +134,9 @@ pub struct Terms{
     pub token_distribution_account:u64,
     pub token_distribution_account_size:u64,
     pub usertokenmint_account:u64,
-    pub usertokenmint_account_size:u64,//64
+    pub usertokenmint_account_size:u64,
     pub token_to_sol_account:u64,
-    pub token_to_sol_account_size:u64,//56
+    pub token_to_sol_account_size:u64,
     pub investor_account:u64,
     pub investor_account_size:u64,
     pub lamports_per_token_fundraising:u64,
@@ -175,4 +175,11 @@ pub struct SellToken{
 pub struct BuyToken{
     pub price_per_token:u64,
     pub amount_to_buy:u64,
+}
+
+#[derive(BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq)]
+pub struct TokenBenefit{
+    pub registered_nft_account_bump:u8,
+    pub decimals:u8,
+    pub benefit_received_pda_bump:u8
 }

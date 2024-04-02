@@ -123,7 +123,7 @@ use spl_token::state::Account;
   let dex: &AccountInfo<'_> = next_account_info(accounts_iter)?;
   let dex_ata: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
-  
+
   if terms_account.owner != program_id{panic!()}
   if dex.owner != program_id{panic!()}
   if terms_account.is_writable{panic!()}

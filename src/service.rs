@@ -2,13 +2,14 @@ use solana_program::{instruction::Instruction, pubkey::Pubkey};
 
 
 
-pub fn create_nft_transfer_instruction(token_program:&Pubkey,source_pubkey:&Pubkey,mint_pubkey:&Pubkey,destination_pubkey:&Pubkey,authority_pubkey:&Pubkey)
+pub fn create_nft_transfer_instruction(token_program_id:&Pubkey,source_pubkey:&Pubkey,mint_pubkey:&Pubkey,destination_pubkey:&Pubkey,authority_pubkey:&Pubkey)
 -> Instruction { 
 
     let ix: solana_program::instruction::Instruction; 
-    if token_program == &spl_token::id(){
+    if token_program_id == &spl_token::id(){
 
-        let result:Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError>  = spl_token::instruction::transfer_checked( &token_program,
+        let result:Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError>  = spl_token::instruction::transfer_checked(
+              &token_program_id,
               &source_pubkey, 
               &mint_pubkey, 
               &destination_pubkey, 
@@ -19,9 +20,10 @@ pub fn create_nft_transfer_instruction(token_program:&Pubkey,source_pubkey:&Pubk
                 Ok(instruction) => instruction,
                 Err(error) => {panic!("{}",error);}};
   
-      }else if token_program == &spl_token_2022::id(){
+      }else if token_program_id == &spl_token_2022::id(){
   
-        let result: Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError> = spl_token_2022::instruction::transfer_checked( &token_program,
+        let result: Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError> = spl_token_2022::instruction::transfer_checked(
+              &token_program_id,
               &source_pubkey, 
               &mint_pubkey, 
               &destination_pubkey, 
@@ -39,23 +41,39 @@ pub fn create_nft_transfer_instruction(token_program:&Pubkey,source_pubkey:&Pubk
  }
 
 
- pub fn create_token_transfer_instruction(token_program:&Pubkey,source_pubkey:&Pubkey,mint_pubkey:&Pubkey,destination_pubkey:&Pubkey,authority_pubkey:&Pubkey,amount:u64)
+ pub fn create_token_transfer_instruction(token_program_id:&Pubkey,source_pubkey:&Pubkey,mint_pubkey:&Pubkey,destination_pubkey:&Pubkey,authority_pubkey:&Pubkey,amount:u64,decimals:u8)
  -> Instruction { 
  
-     let ix: solana_program::instruction::Instruction; 
+  let ix: solana_program::instruction::Instruction; 
+    if token_program_id == &spl_token::id(){
  
-   
-         let result: Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError> = spl_token_2022::instruction::transfer_checked( &token_program,
+         let result: Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError> = spl_token_2022::instruction::transfer_checked( 
+               &token_program_id,
                &source_pubkey, 
                &mint_pubkey, 
                &destination_pubkey, 
                &authority_pubkey, 
-               &[],amount,0);
+               &[],amount,decimals);
    
                ix =  match result {
                  Ok(instruction) => instruction,
                  Err(error) => {panic!("{}",error);}};
 
+    }else if token_program_id == &spl_token_2022::id(){
+
+      let result:Result<solana_program::instruction::Instruction, solana_program::program_error::ProgramError>  = spl_token::instruction::transfer_checked(
+        &token_program_id,
+        &source_pubkey, 
+        &mint_pubkey, 
+        &destination_pubkey, 
+        &authority_pubkey, 
+        &[],amount,decimals);
+
+        ix =  match result {
+          Ok(instruction) => instruction,
+          Err(error) => {panic!("{}",error);}};
+
+    }else{panic!()}
  
        return ix;
  

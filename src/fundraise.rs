@@ -45,57 +45,48 @@ use solana_program::{
     let sysvar: &AccountInfo<'_> = next_account_info(accounts_iter)?;
 
     if dex.owner != program_id{panic!()}
+    msg!("1");
     if registered_nft_account.owner != program_id{panic!()}
+    msg!("2");
     if terms_account.owner != program_id{panic!()}
+    msg!("3");
     if dex.is_writable{panic!()}
+    msg!("4");
     if terms_account.is_writable{panic!()}
+    msg!("5");
 
     let registered_nft_account_data: NFTState = NFTState::try_from_slice(&registered_nft_account.data.borrow())?;
     let nft_mint_from_bytes2: Pubkey = Pubkey::new_from_array(registered_nft_account_data.nft_mint);
 
     if nft_mint.owner != &spl_token::id() && nft_mint.owner != &spl_token_2022::id(){panic!()}
+    msg!("6");
 
-    let dex_data: Terms = Terms::try_from_slice(&dex.data.borrow())?;
+    let dex_data: InitPDA = InitPDA::try_from_slice(&dex.data.borrow())?;
     let terms: Terms = Terms::try_from_slice(&terms_account.data.borrow())?;
     if terms.is_init != 1 {panic!()}
-    if dex_data.is_init != 5 {panic!()}
+    msg!("7");
+    if dex_data.init_pda != 5 {panic!()}
+    msg!("7");
 
     if !initializer.is_signer{panic!()}
+    msg!("8");
 
     let seed: &[u8] = &nft_mint.key.to_bytes();
 
-
     let bump: u8 = Pubkey::find_program_address(&[b"fund",seed], program_id).1;
 
-    if fundrasing_account.owner != program_id{
-
-        invoke_signed(
-            &system_instruction::create_account(
-              &initializer.key, 
-              &fundrasing_account.key,
-              terms.fundrasing_account,
-                terms.fundrasing_account_size, 
-                program_id),
-            &[
-              initializer.clone(),
-              fundrasing_account.clone(),
+    let fundraising: FundRaising = FundRaising::try_from_slice(&fundrasing_account.data.borrow())?;
+    if fundraising.fund_raising != 0 {panic!()} //if there is an active fundrasing panic
+    msg!("8");
+    let nft_mint_from_bytes3: Pubkey = Pubkey::new_from_array(fundraising.nft_mint);
+    if nft_mint_from_bytes3 != nft_mint_from_bytes2 {panic!()}
+    msg!("1");
     
-            ],
-            &[&[b"fund",seed, &[bump]]],
-         )?;
-    
-    }else{
-        let fundraising: FundRaising = FundRaising::try_from_slice(&fundrasing_account.data.borrow())?;
-        if fundraising.fund_raising != 0 {panic!()} //if there is an active fundrasing panic
-        let nft_mint_from_bytes3: Pubkey = Pubkey::new_from_array(fundraising.nft_mint);
-        if nft_mint_from_bytes3 != nft_mint_from_bytes2 {panic!()}
-    }
-
     if registered_nft_account_data.tokenized_for_sale != 0 {panic!()} //if the nft is tokenized cant start a fundrasing. go buy tokens
+    msg!("2");
     if registered_nft_account_data.owned_by_pda != 0 {panic!()} //if nft already owned by a community cant start a funsraise
-
+    msg!("3");
     let seed: &[u8] = &tokenization_mint.key.to_bytes();
-
 
     //initializing token distribution account
     invoke_signed(
@@ -296,7 +287,6 @@ use solana_program::{
 
     funders.serialize(&mut &mut funders_account.data.borrow_mut()[..])?;
     fundraising.serialize(&mut &mut fundraising_account.data.borrow_mut()[..])?;
-
 
 
     Ok(())
