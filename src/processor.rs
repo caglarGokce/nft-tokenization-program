@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{dex, fundraise, market, tokenizenft, vote};
+use crate::{benefits, dex, fundraise, market, tokenizenft, vote};
 use crate::instruction::NFTInstruction;
 use crate::state::{ InitPDA,  NFTState, Terms, };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -150,9 +150,16 @@ impl Processor {
       NFTInstruction::InitDex  => {
         dex::init_dex(accounts,program_id)
       }
+      NFTInstruction::GetTokenizedBenefit {data} => {
+        benefits::get_tokenized_benefit(accounts,program_id,data)
+      }
+      NFTInstruction::GetSolBenefit {data} => {
+        benefits::get_sol_benefit(accounts,program_id,data)
+      }
     }
   }
 
+  
 
 
   fn create_metadata(

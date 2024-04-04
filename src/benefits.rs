@@ -2,7 +2,7 @@
 use crate::check::check_mint_and_owner;
 
 use crate::service::create_token_transfer_instruction;
-use crate::state::{ NFTState, Terms, TokenBenefit};
+use crate::state::{ InitPDA, NFTState, Terms, TokenBenefit};
 use borsh::BorshDeserialize;
 
 
@@ -120,7 +120,7 @@ pub fn get_tokenized_benefit(
 pub fn get_sol_benefit(
     accounts: &[AccountInfo],
     program_id: &Pubkey,
-    data:TokenBenefit) -> ProgramResult {
+    data:InitPDA) -> ProgramResult {
 
     let accounts_iter: &mut std::slice::Iter<'_, AccountInfo<'_>> = &mut accounts.iter();
 
@@ -174,7 +174,7 @@ pub fn get_sol_benefit(
       0,
       program_id),
       &[benefitor.clone(),benefit_received.clone()],
-      &[&[b"bnft",&seed1,&seed2, &[data.benefit_received_pda_bump]]],
+      &[&[b"bnft",&seed1,&seed2, &[data.init_pda]]],
      )?;
 
     Ok(())
