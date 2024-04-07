@@ -14,11 +14,33 @@ import { useTheme } from '@/hooks/theme';
 import { useBreakpointMatch } from '@/hooks/useBreakpointMatch';
 import { navRoutes } from '@/routes';
 import store from '@/store';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { clusterApiUrl } from '@solana/web3.js';
+import {
+  PhantomWalletAdapter
+} from "@solana/wallet-adapter-wallets";
+import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
+import {
+  WalletModalProvider,
+} from "@solana/wallet-adapter-react-ui";
 
 export default function Layout(props: Readonly<HTMLProps<HTMLDivElement>>) {
+  const network = WalletAdapterNetwork.Testnet;
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+    ],
+    [network]
+  );
+
   return (
     <ReduxProvider store={store}>
-      <Container {...props} />
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider wallets={wallets} autoConnect>
+          <WalletModalProvider><Container {...props} /></WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
     </ReduxProvider>
   );
 }
@@ -56,7 +78,7 @@ function Container({ children }: Readonly<HTMLProps<HTMLDivElement>>) {
         <Stack
           spacing={2}
           className={`md:p-6 min-h-screen`}
-          style={{marginLeft: sidebar.width,marginTop: headerMobile.height}}
+          style={{ marginLeft: sidebar.width, marginTop: headerMobile.height }}
         >
           <Header onOpenMenu={() => setSidebarOpen(true)} />
           <div className="my-5 mx-4 md:m-0 md:mt-11">{children}</div>

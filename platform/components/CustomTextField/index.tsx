@@ -79,7 +79,6 @@ const OmiInputField: React.FC<OmiInputFieldPropsType> = ({
             value={text}
             onChange={(e) => {
               setText(e.target.value);
-              onChange(e.target.value);
               validateInput(e.target.value);
             }}
           />

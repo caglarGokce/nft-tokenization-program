@@ -16,13 +16,20 @@ import MetricItem from "@/components/Metric";
 import { UserAvatar } from "@/components/UserAvatar";
 import exampleProfile from "@/public/profile_ex.png"
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
+import WalletContextProvider from "@/components/WalletContextProvider";
+
+const WalletMultiButtonDynamic = dynamic(
+    async () => (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
+    { ssr: false }
+);
 const Dashboard = () => {
     const dispatch = useDispatch();
     const { palette } = useTheme();
 
     useEffect(() => {
         dispatch(sidebarActions.changePath({ path: 'dashbaord' }));
-    },[]);
+    }, []);
 
     const renderName = (row: any) => {
         return <Typography variant="body1" text={row?.asset} />;
@@ -38,15 +45,11 @@ const Dashboard = () => {
                 <Stack isRow={true} className="sm:flex-row justify-between z-20 w-full h-full p-6">
                     <Typography text={"Dashboard"} variant="header1" />
                     <Stack isRow={true} spacing={4}>
-                        <UserAvatar
-                            alt="user avatar"
-                            size={'lg'}
-                            url={exampleProfile}
-                        />
-                        <Stack>
-                            <Typography disableDefaultColor={true} text="Welcome back" variant="caption3" />
-                            <Typography text="@ernilmz" variant="caption3" />
-                        </Stack>
+                        
+                        <WalletContextProvider>
+                            <WalletMultiButtonDynamic />
+                        </WalletContextProvider>
+                        
                     </Stack>
 
                 </Stack>

@@ -63,13 +63,18 @@ const Marketplace = () => {
 
     useEffect(() => {
         const getNfts = async() => {
-            if (filter == filterValues[0].key) {
-                const tokenizedNftOnSale = await get_tokenized_nfts_on_sale();
-                setData(tokenizedNftOnSale)
-            }else{
-                const nftOnSale =  await get_nfts_on_sale();
-                setData(nftOnSale)
+            try{
+                if (filter == filterValues[0].key) {
+                    const tokenizedNftOnSale = await get_tokenized_nfts_on_sale();
+                    setData(tokenizedNftOnSale)
+                }else{
+                    const nftOnSale =  await get_nfts_on_sale();
+                    setData(nftOnSale)
+                }
+            }catch(err:any){
+                setData(null)
             }
+            
         }
         getNfts()
     }, [filter])

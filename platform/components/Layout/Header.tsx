@@ -2,6 +2,8 @@ import React from 'react';
 import Logo from '../Logo';
 import { useTheme } from '@/hooks/theme';
 import { useBreakpointMatch } from '@/hooks/useBreakpointMatch';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import dynamic from 'next/dynamic';
 
 export type HeaderPropsType = {
   /** Called when menu icon is clicked */
