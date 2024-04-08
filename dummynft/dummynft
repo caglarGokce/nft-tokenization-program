@@ -1,0 +1,197 @@
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  TransactionMessage,
+  VersionedTransaction,
+  Transaction,
+  SystemProgram,
+  TransactionInstruction,
+  SYSVAR_RENT_PUBKEY,
+  SendOptions,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+
+import { createMint,
+  createInitializeMintInstruction,
+  TOKEN_PROGRAM_ID,MINT_SIZE, 
+  getMinimumBalanceForRentExemptMint, 
+  createMintToCheckedInstruction,
+  getAssociatedTokenAddress,
+  createAssociatedTokenAccountInstruction,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_2022_PROGRAM_ID,
+  getOrCreateAssociatedTokenAccount,
+  getAssociatedTokenAddressSync,
+  transferCheckedWithFee,
+  createInitializeMetadataPointerInstruction,
+  ExtensionType,
+  getMintLen,
+  LENGTH_SIZE,
+  TYPE_SIZE,
+  createMintToInstruction,
+  createInitializeMint2Instruction,
+  } from "@solana/spl-token";
+
+  import {createInitializeInstruction, pack, TokenMetadata, createUpdateFieldInstruction} from "@solana/spl-token-metadata";
+
+  import { deserialize, serialize } from "borsh";
+  
+  const connection= new Connection("https://api.devnet.solana.com","confirmed");
+
+
+  class Init{
+
+    size:number = 0;
+    lamports:number = 0;
+    bump:number = 0;
+  
+  
+  constructor(fields: {
+  
+    size:number;
+    lamports:number;
+    bump:number;
+  
+  
+   } | undefined = undefined)
+    {if (fields) {
+  
+      this.size = fields.size;
+      this.lamports = fields.lamports;
+      this.bump = fields.bump;
+  
+    }
+  }
+  }
+  const InitSchema=new Map([
+  [
+    Init,
+    {
+      kind: "struct",
+      fields: [
+        ["size","u64"],
+        ["lamports","u64"], 
+        ["bump","u8"], 
+  
+      ],
+    },
+  ],
+  ])
+
+
+
+
+const programID = new PublicKey("2Cj8NUUSth7RCS7yEa4bQWg4sr2yU2Yr3fjodu299kbq");
+
+
+const nft = async () => {
+
+  const mint3 = Keypair.generate();
+
+  const ATA = await getAssociatedTokenAddress(mint3.publicKey,payer.publicKey);
+
+  let init = new Init();
+
+  init.size = MINT_SIZE;
+  init.lamports =  await getMinimumBalanceForRentExemptMint(connection);
+  init.bump = 50;
+
+
+  let encoded = serialize(InitSchema,init);
+    
+  let concated = Uint8Array.of(50,...encoded);
+
+
+  const ix = new TransactionInstruction({
+    programId:programID,
+    keys:[
+      {isSigner:true,isWritable:true,pubkey:payer.publicKey},
+      {isSigner:true,isWritable:true,pubkey:mint3.publicKey},
+      {isSigner:false,isWritable:true,pubkey:TOKEN_PROGRAM_ID},
+      {isSigner:false,isWritable:true,pubkey:SYSVAR_RENT_PUBKEY},
+      {isSigner:false,isWritable:true,pubkey:payer.publicKey},
+      {isSigner:false,isWritable:true,pubkey:ATA},
+      {isSigner:false,isWritable:true,pubkey:ASSOCIATED_TOKEN_PROGRAM_ID},
+      {isSigner:false,isWritable:true,pubkey:SystemProgram.programId},
+    ],
+    data:Buffer.from(concated)});
+
+  const message = new TransactionMessage({
+    instructions: [ix],
+      payerKey: payer.publicKey,
+      recentBlockhash : (await connection.getLatestBlockhash()).blockhash
+  
+    }).compileToV0Message();
+
+    console.log("new mint "+mint3.publicKey.toString());
+    console.log("new ata "+ATA.toString());
+  
+    const tx = new VersionedTransaction(message);
+    tx.sign([payer,mint3]);
+    const sig = await connection.sendTransaction(tx);
+
+}
+
+const create_metadata_account = async (nft:PublicKey) => {
+
+
+  console.log("player "+payer.publicKey.toString());
+
+
+  const metadataAddress =  PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("metadata"),
+      metaplex_program.toBuffer(),
+      nft.toBuffer(),
+    ],
+    metaplex_program
+  );
+
+
+  const pda =  PublicKey.findProgramAddressSync([Buffer.from("NFT")],programID);//mint authority
+
+  const ATA = await getAssociatedTokenAddress(nft,payer.publicKey);
+
+  let metadata = new NFT();
+
+  metadata.name = "Kenny McCormick";
+  metadata.symbol =  "SOUTH";
+  metadata.uri = "https://upload.wikimedia.org/wikipedia/en/6/6f/KennyMcCormick.png";
+
+  let encoded = serialize(NFTSchema,metadata);
+    
+  let concated = Uint8Array.of(200,...encoded);
+
+
+  const ix = new TransactionInstruction({
+    programId:programID,
+    keys:[
+      {isSigner:false,isWritable:true,pubkey:metadataAddress[0]},
+      {isSigner:false,isWritable:true,pubkey:nft},
+      {isSigner:false,isWritable:true,pubkey:payer.publicKey},
+      {isSigner:false,isWritable:true,pubkey:pda[0]},
+      {isSigner:false,isWritable:true,pubkey:metaplex_program},
+      {isSigner:false,isWritable:true,pubkey:SystemProgram.programId},
+      {isSigner:false,isWritable:true,pubkey:TOKEN_PROGRAM_ID},
+      {isSigner:false,isWritable:true,pubkey:SYSVAR_RENT_PUBKEY},
+      {isSigner:false,isWritable:true,pubkey:ATA},
+      {isSigner:false,isWritable:true,pubkey:ASSOCIATED_TOKEN_PROGRAM_ID},
+    ],
+    data:Buffer.from(concated)});
+
+  const message = new TransactionMessage({
+    instructions: [ix],
+      payerKey: payer.publicKey,
+      recentBlockhash : (await connection.getLatestBlockhash()).blockhash
+  
+    }).compileToV0Message();
+
+
+  
+    const tx = new VersionedTransaction(message);
+    tx.sign([payer]);
+    const sig = await connection.sendTransaction(tx);
+
+
+}
